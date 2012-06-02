@@ -1,0 +1,16 @@
+<package>
+  <description brief="ardrone_blob">
+
+    Control the flight of an AR Drone by following a color object. 
+
+  </description>
+  <author>Juan Pablo Ramirez/pablo.ramirez@utdallas.edu</author>
+  <license>BSD</license>
+  <review status="unreviewed" notes=""/>
+  <url></url>
+  <depend package="cmvision"/>
+  <depend package="ardrone_utd"/>
+
+</package>
+
+
