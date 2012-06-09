@@ -6,20 +6,26 @@ from cmvision.msg import Blobs
 
 K = 0.01
 
+def compare_blobs(a, b):
+	return cmp(a.area, b.area) 
+
 def callback(data):
-    command = Twist()
-    if data.blob_count == 1:
-    	command.linear.x = data.blobs[0].x
-	command.linear.y = data.blobs[0].y
-	command.linear.z = data.blobs[0].right - data.blobs[0].left
-	pub = rospy.Publisher('/teites', Twist)
-        pub.publish(command)
+	command = Twist()
+	if data.blob_count > 0:
+		barray = sorted(data.blobs, compare_blobs)
+		command.linear.x = barray[0].x
+		command.linear.y = barray[0].y
+		command.linear.z = barray[0].right - barray[0].left
+		pub.publish(command)
 
 def talker():
-    rospy.init_node('ardrone_blob')
-    rospy.Subscriber('/blobs', Blobs, callback);
-    rospy.spin();
+	global pub
+
+	rospy.init_node('ardrone_blob')
+	rospy.Subscriber('/blobs', Blobs, callback);
+	pub = rospy.Publisher('/teites', Twist)
+	rospy.spin();
 if __name__ == '__main__':
-    try:
-        talker()
-    except rospy.ROSInterruptException: pass
+	try:
+		talker()
+	except rospy.ROSInterruptException: pass
