@@ -107,7 +107,7 @@ void vistarget::estimatePose()
 	for(i=0; i < 4; i++)
 		tgtcont.push_back(Point(markers[i].x, markers[i].y));
 
-	convexHull(tgtcont, hull, true, true);
+	convexHull(tgtcont, hull, false);
 	mmt = cv::moments(hull, false);
 	
 	Point ul, ll, ur, lr;
@@ -130,12 +130,13 @@ void vistarget::estimatePose()
 	cv::line(internal, lr, ll, CV_RGB(0,0,255));
 	cv::line(internal, ll, ul, CV_RGB(255,0,255));
 
-	double f = 176;
-	position.val[2] = f*tgtSize/sqrt(pow(ul.x-lr.x,2.0) + pow(ul.y-lr.y,2.0));
-	position.val[0] = ((lr.x-ul.x)-88.0)/f;
-	position.val[1] = ((lr.y-ul.y)-72.0)/f;
+	double f = internal.cols/2.0;
+	position.val[2] = f*tgtSize/sqrt(sqrt(pow(ul.x-lr.x,2.0) + pow(ul.y-lr.y,2.0)));
+	position.val[0] = (center.x-internal.cols/2.0)/f;
+	position.val[1] = -(center.y-internal.rows/2.0)/f;
 
 	cout << "Position: X=" << position.val[0] << " Y=" << position.val[1] << " Z=" << position.val[2] << endl;
+
 
 	cv::imshow("vistarget", internal);
 

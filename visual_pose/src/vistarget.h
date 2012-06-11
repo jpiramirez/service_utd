@@ -22,10 +22,11 @@ class vistarget
 	double blobDistance(Moments a, Moments b);
 	double pointDistance(Point2f a, Point2f b);
 	bool targetAcquired;
-	Vec3d position;
-	Vec4d orientation;
+
 	
 public:
+	Vec3d position; // X, Y, Z translation
+	Vec4d orientation; // (w,x,y,z) quaternion
 	double tgtSize;
 	vistarget();
 	~vistarget();

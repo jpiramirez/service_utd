@@ -13,6 +13,7 @@ static const char WINDOW[] = "Image window";
 class ImageConverter
 {
   ros::NodeHandle nh_;
+  ros::Publisher pose_pub;
   image_transport::ImageTransport it_;
   image_transport::Subscriber image_sub_;
   image_transport::Publisher image_pub_;
@@ -25,7 +26,10 @@ public:
   {
     image_pub_ = it_.advertise("immarkers", 1);
     image_sub_ = it_.subscribe("image", 1, &ImageConverter::imageCb, this);
-    vt.tgtSize = 0.1;
+    pose_pub = nh_.advertise<geometry_msgs::Pose>("/vispose/pose", 1000);
+    if(!nh_.getParam("/vispose/targetsize", vt.tgtSize))
+	vt.tgtSize = 0.1;
+    cout << "Target size is " << vt.tgtSize << endl;
     cv::namedWindow(WINDOW);
   }
 
@@ -55,6 +59,14 @@ public:
 	cv::circle(cv_ptr->image, Point(markers[0].x, markers[0].y), 3, CV_RGB(255,0,0));
     for(int i=1; i < markers.size(); i++)
         cv::circle(cv_ptr->image, Point(markers[i].x, markers[i].y), 3, CV_RGB(0,255,0));
+
+    geometry_msgs::Pose tgtPose;
+
+    tgtPose.position.x = vt.position.val[0];
+    tgtPose.position.y = vt.position.val[1];
+    tgtPose.position.z = vt.position.val[2];
+
+    pose_pub.publish(tgtPose);
 
     cv::imshow(WINDOW, cv_ptr->image);
     cv::waitKey(3);
