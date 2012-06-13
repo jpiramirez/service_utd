@@ -2,6 +2,7 @@
 
 vistarget::vistarget()
 {
+	
 	cv::namedWindow("vistarget");
 }
 
@@ -103,7 +104,9 @@ void vistarget::estimatePose()
 
 	Moments mmt;
 	vector<Point> tgtcont;
+	tgtcont.clear();
 	vector<Point> hull;
+	hull.clear();
 	for(i=0; i < 4; i++)
 		tgtcont.push_back(Point(markers[i].x, markers[i].y));
 
@@ -113,7 +116,7 @@ void vistarget::estimatePose()
 	Point ul, ll, ur, lr;
 
 	i = 0;
-	while(hull[i].x != tgtcont[0].x && hull[i].y != tgtcont[0].y)
+	while(hull[i].x != tgtcont[0].x || hull[i].y != tgtcont[0].y)
 		i++;
 
 	ul = hull[i];
@@ -130,12 +133,40 @@ void vistarget::estimatePose()
 	cv::line(internal, lr, ll, CV_RGB(0,0,255));
 	cv::line(internal, ll, ul, CV_RGB(255,0,255));
 
-	double f = internal.cols/2.0;
-	position.val[2] = f*tgtSize/sqrt(sqrt(pow(ul.x-lr.x,2.0) + pow(ul.y-lr.y,2.0)));
-	position.val[0] = (center.x-internal.cols/2.0)/f;
-	position.val[1] = -(center.y-internal.rows/2.0)/f;
+	// solvePnP needs floating point number for its
+	// inputs.
+	vector<Point2f> fHull;
+	fHull.clear();
+	fHull.push_back(ul);
+	fHull.push_back(ur);
+	fHull.push_back(lr);
+	fHull.push_back(ll);
 
-	cout << "Position: X=" << position.val[0] << " Y=" << position.val[1] << " Z=" << position.val[2] << endl;
+	Mat CameraMatrix = Mat::eye(3, 3, CV_64F);
+	CameraMatrix.at<double>(0,0) = f;
+	CameraMatrix.at<double>(1,1) = f;
+	CameraMatrix.at<double>(0,2) = internal.cols/2.0;
+	CameraMatrix.at<double>(1,2) = internal.rows/2.0;
+
+
+	Mat_<double> rotVec(3, 0);
+	Mat_<double> tranVec(3,0);
+	vector<double> distCoeff;
+	assert(hull.size() == targetCoords.size());
+	solvePnP(targetCoords, fHull, CameraMatrix, distCoeff, rotVec, tranVec, false);
+
+	position.val[0] = tranVec.at<double>(0);
+	position.val[1] = tranVec.at<double>(1);
+	position.val[2] = tranVec.at<double>(2);
+
+	Mat R;
+	Rodrigues(rotVec, R);
+	orientation.val[0] = 0;
+	orientation.val[1] = rotVec.at<double>(0);
+	orientation.val[2] = rotVec.at<double>(1);
+	orientation.val[3] = rotVec.at<double>(2);
+
+	//TODO: Convert R into a quaternion
 
 
 	cv::imshow("vistarget", internal);

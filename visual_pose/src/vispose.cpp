@@ -1,5 +1,6 @@
 #include <ros/ros.h>
 #include <image_transport/image_transport.h>
+#include <sensor_msgs/CameraInfo.h>
 #include <cv_bridge/cv_bridge.h>
 #include <sensor_msgs/image_encodings.h>
 #include <opencv2/imgproc/imgproc.hpp>
@@ -17,6 +18,7 @@ class ImageConverter
   image_transport::ImageTransport it_;
   image_transport::Subscriber image_sub_;
   image_transport::Publisher image_pub_;
+  ros::Subscriber caminfo_sub;
   vistarget vt;
 
   
@@ -26,10 +28,14 @@ public:
   {
     image_pub_ = it_.advertise("immarkers", 1);
     image_sub_ = it_.subscribe("image", 1, &ImageConverter::imageCb, this);
+    caminfo_sub = nh_.subscribe<sensor_msgs::CameraInfo>("camera_info", 1000, &ImageConverter::setCamParam, this);
     pose_pub = nh_.advertise<geometry_msgs::Pose>("/vispose/pose", 1000);
-    if(!nh_.getParam("/vispose/targetsize", vt.tgtSize))
-	vt.tgtSize = 0.1;
+    nh_.param("/vispose/targetsize", vt.tgtSize, 0.1);
     cout << "Target size is " << vt.tgtSize << endl;
+    nh_.param("/vispose/f", vt.f, 160);
+    vt.setTargetCoords();
+    cout << "Focal length is " << vt.f << endl;
+
     cv::namedWindow(WINDOW);
   }
 
@@ -62,16 +68,29 @@ public:
 
     geometry_msgs::Pose tgtPose;
 
-    tgtPose.position.x = vt.position.val[0];
-    tgtPose.position.y = vt.position.val[1];
-    tgtPose.position.z = vt.position.val[2];
+    if(vt.targetFound())
+    {
+        tgtPose.position.x = vt.position.val[0];
+        tgtPose.position.y = vt.position.val[1];
+        tgtPose.position.z = vt.position.val[2];
+    
+        tgtPose.orientation.w = vt.orientation.val[0];
+        tgtPose.orientation.x = vt.orientation.val[1];
+        tgtPose.orientation.y = vt.orientation.val[2];
+        tgtPose.orientation.z = vt.orientation.val[3];
 
-    pose_pub.publish(tgtPose);
+        pose_pub.publish(tgtPose);
+    }
 
     cv::imshow(WINDOW, cv_ptr->image);
     cv::waitKey(3);
     
     image_pub_.publish(cv_ptr->toImageMsg());
+  }
+
+  void setCamParam(const sensor_msgs::CameraInfo::ConstPtr& msg)
+  {
+      
   }
 };
 
