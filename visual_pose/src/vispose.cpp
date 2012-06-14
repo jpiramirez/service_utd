@@ -1,3 +1,10 @@
+// Pose estimation using fiducials.
+//
+// Juan Pablo Ramirez <pablo.ramirez@utdallas.edu>
+// The University of Texas at Dallas
+// Sensing, Robotics, Vision, Control and Estimation Lab
+// (SeRViCE) 2012
+
 #include <ros/ros.h>
 #include <image_transport/image_transport.h>
 #include <sensor_msgs/CameraInfo.h>
@@ -5,6 +12,7 @@
 #include <sensor_msgs/image_encodings.h>
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/highgui/highgui.hpp>
+#include <camera_calibration_parsers/parse.h>
 #include "vistarget.h"
 
 namespace enc = sensor_msgs::image_encodings;
@@ -28,20 +36,40 @@ public:
   {
     image_pub_ = it_.advertise("immarkers", 1);
     image_sub_ = it_.subscribe("image", 1, &ImageConverter::imageCb, this);
-    caminfo_sub = nh_.subscribe<sensor_msgs::CameraInfo>("camera_info", 1000, &ImageConverter::setCamParam, this);
     pose_pub = nh_.advertise<geometry_msgs::Pose>("/vispose/pose", 1000);
     nh_.param("/vispose/targetsize", vt.tgtSize, 0.1);
     cout << "Target size is " << vt.tgtSize << endl;
-    nh_.param("/vispose/f", vt.f, 160);
     vt.setTargetCoords();
-    cout << "Focal length is " << vt.f << endl;
 
-    cv::namedWindow(WINDOW);
+    std::string calibfile;
+    nh_.param<std::string>("/vispose/camera_info_url", calibfile, "calibration.yml");
+    std::string camname;
+    sensor_msgs::CameraInfo caminfo;
+
+    if(!camera_calibration_parsers::readCalibration(calibfile, camname, caminfo))
+        exit(1);
+    
+    // There was a way to do the following assignments in a more compact manner
+    // but I just can't remember
+    vt.calibMatrix.at<double>(0,0) = caminfo.K[0];
+    vt.calibMatrix.at<double>(0,1) = caminfo.K[1];
+    vt.calibMatrix.at<double>(0,2) = caminfo.K[2];
+    vt.calibMatrix.at<double>(1,0) = caminfo.K[3];
+    vt.calibMatrix.at<double>(1,1) = caminfo.K[4];
+    vt.calibMatrix.at<double>(1,2) = caminfo.K[5];
+    vt.calibMatrix.at<double>(2,0) = caminfo.K[6];
+    vt.calibMatrix.at<double>(2,1) = caminfo.K[7];
+    vt.calibMatrix.at<double>(2,2) = caminfo.K[8];
+
+    for(int i=0; i < 5; i++)
+	vt.distCoeff.push_back(caminfo.D[i]);
+
+    cout << vt.calibMatrix << endl;
+
   }
 
   ~ImageConverter()
   {
-    cv::destroyWindow(WINDOW);
   }
 
   void imageCb(const sensor_msgs::ImageConstPtr& msg)
@@ -88,10 +116,6 @@ public:
     image_pub_.publish(cv_ptr->toImageMsg());
   }
 
-  void setCamParam(const sensor_msgs::CameraInfo::ConstPtr& msg)
-  {
-      
-  }
 };
 
 int main(int argc, char** argv)

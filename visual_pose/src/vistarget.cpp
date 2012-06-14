@@ -1,14 +1,21 @@
+// Pose estimation using fiducials.
+//
+// Juan Pablo Ramirez <pablo.ramirez@utdallas.edu>
+// The University of Texas at Dallas
+// Sensing, Robotics, Vision, Control and Estimation Lab
+// (SeRViCE) 2012
+
+
 #include "vistarget.h"
 
 vistarget::vistarget()
 {
-	
-	cv::namedWindow("vistarget");
+	calibMatrix.create(3, 3, CV_64F);
+
 }
 
 vistarget::~vistarget()
 {
-	cv::destroyWindow("vistarget");
 }
 
 void vistarget::computeMarkerLocations(Mat image)
@@ -17,7 +24,7 @@ void vistarget::computeMarkerLocations(Mat image)
 	int i, j;
 
 	cvtColor(image, intimg, CV_BGR2GRAY);
-	
+	cv::blur(intimg, intimg, Size(5, 5));	
 	threshold(intimg, intimg, 128, 255, THRESH_BINARY_INV | THRESH_OTSU);
 	cvtColor(intimg, internal, CV_GRAY2BGR);
 
@@ -133,7 +140,7 @@ void vistarget::estimatePose()
 	cv::line(internal, lr, ll, CV_RGB(0,0,255));
 	cv::line(internal, ll, ul, CV_RGB(255,0,255));
 
-	// solvePnP needs floating point number for its
+	// solvePnP needs floating point numbers for its
 	// inputs.
 	vector<Point2f> fHull;
 	fHull.clear();
@@ -142,34 +149,27 @@ void vistarget::estimatePose()
 	fHull.push_back(lr);
 	fHull.push_back(ll);
 
-	Mat CameraMatrix = Mat::eye(3, 3, CV_64F);
-	CameraMatrix.at<double>(0,0) = f;
-	CameraMatrix.at<double>(1,1) = f;
-	CameraMatrix.at<double>(0,2) = internal.cols/2.0;
-	CameraMatrix.at<double>(1,2) = internal.rows/2.0;
 
 
 	Mat_<double> rotVec(3, 0);
 	Mat_<double> tranVec(3,0);
-	vector<double> distCoeff;
 	assert(hull.size() == targetCoords.size());
-	solvePnP(targetCoords, fHull, CameraMatrix, distCoeff, rotVec, tranVec, false);
+	solvePnP(targetCoords, fHull, calibMatrix, distCoeff, rotVec, tranVec, false);
 
 	position.val[0] = tranVec.at<double>(0);
 	position.val[1] = tranVec.at<double>(1);
 	position.val[2] = tranVec.at<double>(2);
 
-	Mat R;
-	Rodrigues(rotVec, R);
-	orientation.val[0] = 0;
-	orientation.val[1] = rotVec.at<double>(0);
-	orientation.val[2] = rotVec.at<double>(1);
-	orientation.val[3] = rotVec.at<double>(2);
-
-	//TODO: Convert R into a quaternion
-
-
-	cv::imshow("vistarget", internal);
+	double angle;
+	angle = pow(rotVec.at<double>(0), 2.0);
+	angle += pow(rotVec.at<double>(1), 2.0);
+	angle += pow(rotVec.at<double>(2), 2.0);
+	angle = sqrt(angle);
+	rotVec = rotVec / angle;
+	orientation.val[0] = cos(angle/2.0);
+	orientation.val[1] = sin(angle/2.0)*rotVec.at<double>(0);
+	orientation.val[2] = sin(angle/2.0)*rotVec.at<double>(1);
+	orientation.val[3] = sin(angle/2.0)*rotVec.at<double>(2);
 
 }
 
@@ -192,4 +192,5 @@ double vistarget::pointDistance(Point2f a, Point2f b)
 {
 	return sqrt(pow(a.x-b.x, 2.0) + pow(a.y-b.y, 2.0));
 }
+
 
