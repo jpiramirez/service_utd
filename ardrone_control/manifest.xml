@@ -1,15 +1,15 @@
 <package>
-  <description brief="ardrone_blob">
+  <description brief="ardrone_control">
 
-    Control the flight of an AR Drone by following a color object. 
+    Control the flight of an AR Drone by following a visual target. 
 
   </description>
   <author>Juan Pablo Ramirez/pablo.ramirez@utdallas.edu</author>
   <license>BSD</license>
   <review status="unreviewed" notes=""/>
   <url></url>
-  <depend package="cmvision"/>
-  <depend package="ardrone_utd"/>
+  <depend package="ardrone_utd" />
+  <depend package="visual_pose" />
 
 </package>
 
