@@ -24,7 +24,7 @@ void vistarget::computeMarkerLocations(Mat image)
 	int i, j;
 
 	cvtColor(image, intimg, CV_BGR2GRAY);
-	cv::blur(intimg, intimg, Size(5, 5));	
+	//cv::blur(intimg, intimg, Size(5, 5));	
 	threshold(intimg, intimg, 128, 255, THRESH_BINARY_INV | THRESH_OTSU);
 	cvtColor(intimg, internal, CV_GRAY2BGR);
 
@@ -50,13 +50,12 @@ void vistarget::computeMarkerLocations(Mat image)
 
 	vector<Point> markerMatches;
 
-	cout << "---" << endl;
 	for(i = 0; i < mset.size() - 1; i++)
 		for(j = i + 1; j < mset.size(); j++)
 		{
 			if (blobDistance(mset[i], mset[j]) < 2)
 			{
-				cout << blobDistance(mset[i], mset[j]) << endl;
+				ROS_DEBUG_STREAM("" << blobDistance(mset[i], mset[j]));
 				markerMatches.push_back(Point(i, j));
 				break;
 			}
@@ -105,7 +104,7 @@ void vistarget::estimatePose()
 	int i;
 	if(!targetAcquired)
 	{
-		cout << "No target acquired." << endl;
+		ROS_DEBUG("No target acquired.");
 		return;
 	}
 
@@ -133,7 +132,7 @@ void vistarget::estimatePose()
 
 	Point2f center;
 	center = Point2f(mmt.m10/mmt.m00, mmt.m01/mmt.m00);
-	cout << center << endl;
+	ROS_DEBUG_STREAM("" << center);
 	cv::circle(internal, Point(center.x, center.y), 7, CV_RGB(255,0,0));
 	cv::line(internal, ul, ur, CV_RGB(255,0,0));
 	cv::line(internal, ur, lr, CV_RGB(0,255,0));

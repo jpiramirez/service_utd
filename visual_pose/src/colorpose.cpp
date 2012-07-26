@@ -1,4 +1,4 @@
-// Pose estimation using fiducials.
+// Pose estimation using color blobs.
 //
 // Juan Pablo Ramirez <pablo.ramirez@utdallas.edu>
 // The University of Texas at Dallas
@@ -13,7 +13,7 @@
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include <camera_calibration_parsers/parse.h>
-#include "vistarget.h"
+#include "colortarget.h"
 
 namespace enc = sensor_msgs::image_encodings;
 
@@ -27,7 +27,7 @@ class ImageConverter
   image_transport::Subscriber image_sub_;
   image_transport::Publisher image_pub_;
   ros::Subscriber caminfo_sub;
-  vistarget vt;
+  colortarget vt;
 
   
 public:
@@ -39,10 +39,19 @@ public:
     pose_pub = nh_.advertise<geometry_msgs::Pose>("/vispose/pose", 2);
     nh_.param("/vispose/targetsize", vt.tgtSize, 0.1);
     ROS_INFO_STREAM("Target size is " << vt.tgtSize);
-    vt.setTargetCoords();
 
     std::string calibfile;
     nh_.param<std::string>("/vispose/camera_info_url", calibfile, "calibration.yml");
+	std::string colordef;
+	nh_.param<std::string>("/vispose/color", colordef, "0 71 213");
+	std::stringstream ss(colordef);
+	ss >> vt.color.val[0];
+	ss >> vt.color.val[1];
+	ss >> vt.color.val[2];
+	
+	ROS_INFO_STREAM("Using color " << vt.color.val[0] << " " << \
+	                vt.color.val[1] << " " << vt.color.val[2]);
+	
     std::string camname;
     sensor_msgs::CameraInfo caminfo;
 
@@ -85,14 +94,11 @@ public:
       return;
     }
 
-    vector<Point2f> markers;
-    vt.computeMarkerLocations(cv_ptr->image);
-    vt.estimatePose();
-    markers = vt.getMarkers();
-    if(markers.size() > 0)
-	cv::circle(cv_ptr->image, Point(markers[0].x, markers[0].y), 3, CV_RGB(255,0,0));
-    for(int i=1; i < markers.size(); i++)
-        cv::circle(cv_ptr->image, Point(markers[i].x, markers[i].y), 3, CV_RGB(0,255,0));
+	Mat fimage;
+	cv_ptr->image.convertTo(fimage, CV_32FC3);
+    vt.computeStateWithColorBlob(fimage);
+ 	cv::circle(cv_ptr->image, vt.tgtLoc, 3, CV_RGB(255,0,0));
+    cv::rectangle(cv_ptr->image, vt.tgtRect, CV_RGB(0,255,0), 3);
 
     geometry_msgs::Pose tgtPose;
 
@@ -109,9 +115,6 @@ public:
 
         pose_pub.publish(tgtPose);
     }
-
-    cv::imshow(WINDOW, cv_ptr->image);
-    cv::waitKey(3);
     
     image_pub_.publish(cv_ptr->toImageMsg());
   }
