@@ -9,6 +9,7 @@
 #include <image_transport/image_transport.h>
 #include <sensor_msgs/CameraInfo.h>
 #include <cv_bridge/cv_bridge.h>
+#include <geometry_msgs/PoseStamped.h>
 #include <sensor_msgs/image_encodings.h>
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/highgui/highgui.hpp>
@@ -36,7 +37,7 @@ public:
   {
     image_pub_ = it_.advertise("immarkers", 1);
     image_sub_ = it_.subscribe("image", 1, &ImageConverter::imageCb, this);
-    pose_pub = nh_.advertise<geometry_msgs::Pose>("/vispose/pose", 2);
+    pose_pub = nh_.advertise<geometry_msgs::PoseStamped>("/vispose/pose", 2);
     nh_.param("/vispose/targetsize", vt.tgtSize, 0.1);
     ROS_INFO_STREAM("Target size is " << vt.tgtSize);
     vt.setTargetCoords();
@@ -94,18 +95,20 @@ public:
     for(int i=1; i < markers.size(); i++)
         cv::circle(cv_ptr->image, Point(markers[i].x, markers[i].y), 3, CV_RGB(0,255,0));
 
-    geometry_msgs::Pose tgtPose;
+    geometry_msgs::PoseStamped tgtPose;
 
     if(vt.targetFound())
     {
-        tgtPose.position.x = vt.position.val[0];
-        tgtPose.position.y = vt.position.val[1];
-        tgtPose.position.z = vt.position.val[2];
+        tgtPose.pose.position.x = vt.position.val[0];
+        tgtPose.pose.position.y = vt.position.val[1];
+        tgtPose.pose.position.z = vt.position.val[2];
     
-        tgtPose.orientation.w = vt.orientation.val[0];
-        tgtPose.orientation.x = vt.orientation.val[1];
-        tgtPose.orientation.y = vt.orientation.val[2];
-        tgtPose.orientation.z = vt.orientation.val[3];
+        tgtPose.pose.orientation.w = vt.orientation.val[0];
+        tgtPose.pose.orientation.x = vt.orientation.val[1];
+        tgtPose.pose.orientation.y = vt.orientation.val[2];
+        tgtPose.pose.orientation.z = vt.orientation.val[3];
+	tgtPose.header.stamp = ros::Time::now();
+	tgtPose.header.frame_id = "/ardrone_base_link";
 
         pose_pub.publish(tgtPose);
     }

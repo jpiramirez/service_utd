@@ -26,7 +26,8 @@ def callback(data):
 		epub.publish(Empty())
 		state = 0
 		rospy.loginfo(rospy.get_name() + " Landing...")
-	pub.publish(pmsg)
+	if state == 1 and data.buttons[0] != 1:
+		pub.publish(pmsg)
 
 def listener():
 	rospy.init_node('joy2drone')
