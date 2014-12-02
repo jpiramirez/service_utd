@@ -110,6 +110,7 @@ include_directories(
 
 ## Declare a cpp executable
 add_executable(vispose src/vispose.cpp src/vistarget.cpp)
+add_executable(colorpose src/colorpose.cpp src/colortarget.cpp)
 
 ## Add cmake target dependencies of the executable/library
 ## as an example, message headers may need to be generated before nodes
@@ -117,6 +118,10 @@ add_executable(vispose src/vispose.cpp src/vistarget.cpp)
 
 ## Specify libraries to link a library or executable target against
 target_link_libraries(vispose
+   ${catkin_LIBRARIES} ${OpenCV_LIBRARIES}
+ )
+
+target_link_libraries(colorpose
    ${catkin_LIBRARIES} ${OpenCV_LIBRARIES}
  )
 
