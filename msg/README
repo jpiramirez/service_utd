@@ -1,0 +1,3 @@
+These messages were originally defined in the vicon_bridge package. Due to the inability of
+catkin to find packages written for rosbuild, it was easier to replicate the marker messages
+than to try to interface the code with vicon_bridge.
