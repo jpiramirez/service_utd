@@ -29,6 +29,8 @@ class droneController
   geometry_msgs::Twist control;
   float px, py, pz;
   float setx, sety, setz;
+  float errx, erry, errz;
+  float perrx, perry, perrz;
   
 public:
   droneController()
@@ -46,6 +48,12 @@ public:
     setx = 0;
     sety = 0;
     setz = 0.8;
+    errx = 0;
+    erry = 0;
+    errz = 0;
+    perrx = 0;
+    perry = 0;
+    perrz = 0;
     ptime = ros::Time::now();
     ctime = ros::Time::now();
   }
@@ -64,35 +72,39 @@ public:
       // front    back    left    right
       
       //odom = msg;
-      float KPx = 0.3;
-      float KPy = 0.3;
-      float KPz = 0.3;
+      float KPx = 0.1;
+      float KPy = 0.1;
+      float KPz = 0.1;
       
-      float KDx = 0;
-      float KDy = 0;
-      float KDz = 0;
+      float KDx = 0.1;
+      float KDy = 0.1;
+      float KDz = 0.1;
       
       float Ky = 5;
       
       x = msg->pose.position.x;
       y = msg->pose.position.y;
       z = msg->pose.position.z;
+
+      errx = x - setx;
+      erry = y - sety;
+      errz = z - setz;
       
       double angle = 2.0*asin(msg->pose.orientation.z);
       
       //if(fabs(angle) < 1e-2)
-	//angle = 0;
+      //angle = 0;
       if(fabs(angle) < 5e-1)
       {
-	control.linear.x = -KPx*(x-setx) - KDx*((x-setx)-px)/t;
-	control.linear.y = -KPy*(y-sety) - KDy*((y-sety)-py)/t;
-	control.linear.z = -KPz*(z-setz) - KDz*((z-setz)-pz)/t;
+          control.linear.x = -KPx*errx - KDx*(errx-perrx)/t;
+          control.linear.y = -KPy*erry - KDy*(erry-perry)/t;
+          control.linear.z = -KPz*errz - KDz*(errz-perrz)/t;
       }
       else
       {
-	control.linear.x = 0;
-	control.linear.y = 0;
-	control.linear.z = 0;
+          control.linear.x = 0;
+          control.linear.y = 0;
+          control.linear.z = 0;
       }
       control.angular.x = 0;
       control.angular.y = 0;
@@ -100,26 +112,30 @@ public:
       
       
       // Saturation
-      if(fabs(control.linear.x) > 0.05)
-	control.linear.x = copysign(0.05, control.linear.x);
-      if(fabs(control.linear.y) > 0.05)
-	control.linear.y = copysign(0.05, control.linear.y);
-      if(fabs(control.linear.z) > 0.05)
-	control.linear.z = copysign(0.05, control.linear.z);
+      //if(fabs(control.linear.x) > 0.05)
+      //control.linear.x = copysign(0.05, control.linear.x);
+      //if(fabs(control.linear.y) > 0.05)
+      //control.linear.y = copysign(0.05, control.linear.y);
+      //if(fabs(control.linear.z) > 0.05)
+      //control.linear.z = copysign(0.05, control.linear.z);
 
       // Hover
       if(fabs(control.linear.x) < 1e-2)
-	control.linear.x = 0;
+          control.linear.x = 0;
       if(fabs(control.linear.y) < 1e-2)
-	control.linear.y = 0;
+          control.linear.y = 0;
       if(fabs(control.linear.z) < 1e-2)
-	control.linear.z = 0;
+          control.linear.z = 0;
       
       ctrl_pub.publish(control);
       ptime = ctime;
       px = x;
       py = y;
       pz = z;
+      perrx = errx;
+      perry = erry;
+      perrz = errz;
+
   }
   
   void setpointCallback(const geometry_msgs::Vector3::ConstPtr& msg)

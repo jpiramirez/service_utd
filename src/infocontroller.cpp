@@ -10,13 +10,15 @@
 #include <std_msgs/Bool.h>
 #include <geometry_msgs/PoseStamped.h>
 #include <geometry_msgs/Vector3.h>
-#include <nav_msgs/OccupancyGrid.h>
+#include <nav_msgs/GridCells.h>
+#include <geometry_msgs/Point.h>
 #include <eigen3/Eigen/Dense>
 #include <math.h>
 #include "targetstateestimator.h"
 #include <string>
 #include <fstream>
 #include <iostream>
+#include <iomanip>
 
 using namespace std;
 using namespace Eigen;
@@ -30,6 +32,7 @@ class infoController
   ros::Subscriber pose_sub;
   ros::Subscriber object_sub;
   geometry_msgs::Vector3 wp_msg;
+  nav_msgs::GridCells pm_msg;
   float x, y, z;
   ros::Time ptime, ctime;
   ros::Duration d;
@@ -42,12 +45,13 @@ class infoController
   ros::Timer timer;
   Rect area;
   int seqnum;
+  ofstream timestamps;
   
 public:
   infoController()
   {
     waypoint_pub = nh_.advertise<geometry_msgs::Vector3>("/ardrone/setpoint", 2);
-    map_pub = nh_.advertise<nav_msgs::OccupancyGrid>("/occgrid", 2);
+    map_pub = nh_.advertise<nav_msgs::GridCells>("/probmap", 2);
     pose_sub = nh_.subscribe("/ardrone/pose", 2, &infoController::Callback, this);
     object_sub = nh_.subscribe("/objectdetected", 2, &infoController::detectionCallback, this);
     timer = nh_.createTimer(ros::Duration(2.0), &infoController::computeWaypoint, this);
@@ -72,6 +76,7 @@ public:
     av = 2.0*atan(180.0/fv);
     ah = 2.0*atan(320.0/fh);
     seqnum = 0;
+    timestamps.open("timestamps.txt", ios::out);
   }
 
   ~infoController()
@@ -80,6 +85,7 @@ public:
     FileStorage fs("delme.xml", FileStorage::WRITE);
     fs << "G" << tse->getGrid();
     fs.release();
+    timestamps.close();
   }
 
   void Callback(const geometry_msgs::PoseStamped::ConstPtr& msg)
@@ -95,6 +101,7 @@ public:
       float yp = z*tan(fabs(ah/2.0));
       bool detected = msg->data;
 
+      // The camera is offset 2" from the drone center in the x-axis
       float x1 = x - 2.0*0.0254 - xp;
       float x2 = x - 2.0*0.0254 + xp;
       float y1 = y - yp;
@@ -111,6 +118,12 @@ public:
       tse->MLE();
       cout << "Mean: " << tse->mean*(-2.0/float(nsqx))+Vec2f(1,1) << endl;
       cout << "StdDev: " << tse->std*(-2.0/float(nsqx))+Vec2f(1,1) << endl;
+
+      pm_msg.cells.clear();
+      pm_msg.header.seq = seqnum;
+      pm_msg.header.stamp = ros::Time::now();
+      pm_msg.header.frame_id = "map";
+      geometry_msgs::Point pt;
       
       char name[80];
       sprintf(name, "%04i", seqnum);
@@ -119,15 +132,28 @@ public:
       filename = "grid" + filename + ".txt";
       fs.open(filename.c_str(), ios::out);
       Mat data = tse->getGrid();
+      float tmp;
       for(int i=0; i < data.rows; i++)
       {
-	for(int j=0; j < data.cols; j++)
-	{
-	  fs << data.at<float>(i,j) << " " ;
-	}
-	fs << endl;
+          for(int j=0; j < data.cols; j++)
+          {
+              fs << data.at<float>(i,j) << " " ;
+              pt.z = data.at<float>(i,j);
+              pm_msg.cells.push_back(pt);
+          }
+          fs << endl;
       }
       fs.close();
+
+      // Timestamp storage for visualization
+      ros::Time ctime;
+      ctime = ros::Time::now();
+      timestamps << ctime.sec;
+      timestamps << setfill('0') << setw(9) << ctime.nsec;
+      timestamps << "," << seqnum << endl;
+
+      map_pub.publish(pm_msg);
+
       seqnum++;
   }
   

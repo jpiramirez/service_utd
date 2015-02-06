@@ -61,11 +61,11 @@ void targetStateEstimator::MLE()
     Mat ydist = Mat::zeros(1, occgrid.rows, CV_32F);
     for(int i=0; i < occgrid.rows; i++)
     {
-      for(int j=0; j < occgrid.cols; j++)
-      {
-	ydist.at<float>(0,i) += occgrid.at<float>(i,j);
-	xdist.at<float>(0,j) += occgrid.at<float>(i,j);
-      }
+        for(int j=0; j < occgrid.cols; j++)
+        {
+            ydist.at<float>(0,i) += occgrid.at<float>(i,j);
+            xdist.at<float>(0,j) += occgrid.at<float>(i,j);
+        }
     }
     mean[0] = 0.0; // x coord estimate
     mean[1] = 0.0; // y
@@ -73,13 +73,13 @@ void targetStateEstimator::MLE()
     std[1] = 0.0;
     for(int i=0; i < occgrid.rows; i++)
     {
-      mean[1] += ydist.at<float>(0,i)*i;
-      std[1] += ydist.at<float>(0,i)*i*i;
+        mean[1] += ydist.at<float>(0,i)*i;
+        std[1] += ydist.at<float>(0,i)*i*i;
     }
     for(int j=0; j < occgrid.cols; j++)
     {
-      mean[0] += xdist.at<float>(0,j)*j;
-      std[0] += xdist.at<float>(0,j)*j*j;
+        mean[0] += xdist.at<float>(0,j)*j;
+        std[0] += xdist.at<float>(0,j)*j*j;
     }
     //cout << std << endl;
     std[0] -= mean[0]*mean[0];

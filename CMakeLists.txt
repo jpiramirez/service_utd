@@ -5,6 +5,8 @@ project(service_utd)
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
+  message_generation
+  rospy
   camera_calibration_parsers
   cv_bridge
   geometry_msgs
@@ -15,6 +17,7 @@ find_package(catkin REQUIRED COMPONENTS
 )
 
 find_package(OpenCV REQUIRED)
+find_package(Eigen REQUIRED)
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
@@ -55,6 +58,12 @@ find_package(OpenCV REQUIRED)
 #   Message1.msg
 #   Message2.msg
 # )
+add_message_files(
+  FILES
+  Marker.msg
+  Markers.msg
+  TfDistortInfo.msg
+)
 
 ## Generate services in the 'srv' folder
 # add_service_files(
@@ -71,10 +80,12 @@ find_package(OpenCV REQUIRED)
 # )
 
 ## Generate added messages and services with any dependencies listed here
-# generate_messages(
-#   DEPENDENCIES
-#   geometry_msgs#   sensor_msgs#   std_msgs
-# )
+generate_messages(
+   DEPENDENCIES
+   geometry_msgs
+   sensor_msgs
+   std_msgs
+)
 
 ###################################
 ## catkin specific configuration ##
@@ -111,6 +122,12 @@ include_directories(
 ## Declare a cpp executable
 add_executable(vispose src/vispose.cpp src/vistarget.cpp)
 add_executable(colorpose src/colorpose.cpp src/colortarget.cpp)
+add_executable(targetdetector src/targetdetector.cpp src/detecttarget.cpp)
+add_executable(unittest src/unittest.cpp src/targetstateestimator.cpp)
+add_executable(drone_odom src/drone_odom.cpp)
+add_executable(drone_setpoint src/drone_setpoint.cpp)
+add_executable(infocontroller src/infocontroller.cpp src/targetstateestimator.cpp)
+add_executable(xml2octave src/xml2octave.cpp)
 
 ## Add cmake target dependencies of the executable/library
 ## as an example, message headers may need to be generated before nodes
@@ -125,6 +142,29 @@ target_link_libraries(colorpose
    ${catkin_LIBRARIES} ${OpenCV_LIBRARIES}
  )
 
+target_link_libraries(targetdetector
+   ${catkin_LIBRARIES} ${OpenCV_LIBRARIES}
+ )
+ 
+target_link_libraries(unittest
+   ${catkin_LIBRARIES} ${OpenCV_LIBRARIES}
+ )
+
+target_link_libraries(drone_odom
+   ${catkin_LIBRARIES} ${OpenCV_LIBRARIES}
+ )
+ 
+target_link_libraries(drone_setpoint
+   ${catkin_LIBRARIES} ${OpenCV_LIBRARIES}
+ )
+ 
+target_link_libraries(infocontroller
+   ${catkin_LIBRARIES} ${OpenCV_LIBRARIES}
+ )
+ 
+target_link_libraries(xml2octave
+   ${catkin_LIBRARIES} ${OpenCV_LIBRARIES}
+ )
 #############
 ## Install ##
 #############
@@ -172,3 +212,8 @@ target_link_libraries(colorpose
 
 ## Add folders to be run by python nosetests
 # catkin_add_nosetests(test)
+
+
+catkin_package(
+  CATKIN_DEPENDS message_runtime
+)
