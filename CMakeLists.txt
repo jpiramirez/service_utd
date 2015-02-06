@@ -14,6 +14,7 @@ find_package(catkin REQUIRED COMPONENTS
   roscpp
   sensor_msgs
   std_msgs
+  nav_msgs
 )
 
 find_package(OpenCV REQUIRED)
@@ -63,6 +64,7 @@ add_message_files(
   Marker.msg
   Markers.msg
   TfDistortInfo.msg
+  ProbMap.msg
 )
 
 ## Generate services in the 'srv' folder
@@ -85,6 +87,7 @@ generate_messages(
    geometry_msgs
    sensor_msgs
    std_msgs
+   nav_msgs
 )
 
 ###################################
@@ -127,6 +130,7 @@ add_executable(unittest src/unittest.cpp src/targetstateestimator.cpp)
 add_executable(drone_odom src/drone_odom.cpp)
 add_executable(drone_setpoint src/drone_setpoint.cpp)
 add_executable(infocontroller src/infocontroller.cpp src/targetstateestimator.cpp)
+add_executable(ros2matlab src/ros2matlab.cpp)
 add_executable(xml2octave src/xml2octave.cpp)
 
 ## Add cmake target dependencies of the executable/library
@@ -159,6 +163,10 @@ target_link_libraries(drone_setpoint
  )
  
 target_link_libraries(infocontroller
+   ${catkin_LIBRARIES} ${OpenCV_LIBRARIES}
+ )
+ 
+target_link_libraries(ros2matlab
    ${catkin_LIBRARIES} ${OpenCV_LIBRARIES}
  )
  

@@ -19,10 +19,10 @@ void targetStateEstimator::updateGrid(Rect &area, bool measurement)
     Rect iarea = area;
     if(iarea.x < 0) iarea.x = 0;
     if(iarea.y < 0) iarea.y = 0;
-    if(iarea.width+iarea.x >= occgrid.cols)
-      iarea.width = occgrid.cols - iarea.x - 1;
-    if(iarea.height+iarea.y >= occgrid.rows)
-      iarea.height = occgrid.rows - iarea.y - 1;
+    if(iarea.width+iarea.x-1 >= occgrid.cols)
+      iarea.width = occgrid.cols - iarea.x;
+    if(iarea.height+iarea.y-1 >= occgrid.rows)
+      iarea.height = occgrid.rows - iarea.y;
     fov = mask(iarea);
     fov = Scalar(1.0);
     
@@ -30,23 +30,23 @@ void targetStateEstimator::updateGrid(Rect &area, bool measurement)
     if(measurement)
     {
         mask = Scalar(beta);
-	fov = Scalar(alpha);	
+        fov = Scalar(alpha);
     }
     else
     {
-	mask = Scalar(1-beta);
-	fov = Scalar(1-alpha);	
+        mask = Scalar(1-beta);
+        fov = Scalar(1-alpha);
     }
     //cout << mask << endl;
     occgrid = occgrid.mul(mask);
     float factor = sum(occgrid)[0];
     //cout << "Factor: " << factor << endl;
     if(factor > 0.0)
-      occgrid = occgrid*(1.0/factor);
+        occgrid = occgrid*(1.0/factor);
     else
     {
-      cout << "The target is not in the search area" << endl;
-      occgrid = Scalar(1/float(occgrid.rows*occgrid.cols));
+        cout << "The target is not in the search area" << endl;
+        occgrid = Scalar(1/float(occgrid.rows*occgrid.cols));
     }
 }
 
