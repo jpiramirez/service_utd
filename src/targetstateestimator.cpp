@@ -48,6 +48,30 @@ void targetStateEstimator::updateGrid(Rect &area, bool measurement)
         cout << "The target is not in the search area" << endl;
         occgrid = Scalar(1/float(occgrid.rows*occgrid.cols));
     }
+
+    // Floating point arithmetic requires a threshold!
+//    for(int i=0; i < occgrid.rows; i++)
+//    {
+//        for(int j=0; j < occgrid.cols; j++)
+//        {
+//            if(occgrid.at<float>(i,j) < 1e-9)
+//                occgrid.at<float>(i,j) = 0.0;
+//        }
+//    }
+//    float factor = sum(occgrid)[0];
+//    occgrid = occgrid*(1.0/factor);
+
+    // What follows is an attempt to deal with zero-entropy grids
+    double max;
+    minMaxLoc(occgrid, NULL, &max);
+    if(fabs(max - 1) < 1e-6)
+    {
+        cout << "Singleton grid estimate reached, smoothing" << endl;
+        Mat newgrid = occgrid.clone();
+        GaussianBlur(occgrid, newgrid, Size(5, 5), 0, 0, BORDER_CONSTANT);
+        factor = sum(newgrid)[0];
+        occgrid = newgrid*(1.0/factor);
+    }
 }
 
 Mat targetStateEstimator::getGrid()

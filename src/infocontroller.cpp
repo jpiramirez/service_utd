@@ -29,10 +29,11 @@ class infoController
   ros::NodeHandle nh_;
   ros::Publisher waypoint_pub;
   ros::Publisher map_pub;
+  ros::Publisher searchmap_pub;
   ros::Subscriber pose_sub;
   ros::Subscriber object_sub;
   geometry_msgs::Vector3 wp_msg;
-  service_utd::ProbMap pm_msg;
+  service_utd::ProbMap pm_msg, sm_msg;
   float x, y, z;
   ros::Time ptime, ctime;
   ros::Duration d;
@@ -47,12 +48,15 @@ class infoController
   int seqnum;
   ofstream timestamps;
   float xp, yp;
+  float gridsizex, gridsizey;
+  float squaresize;
   
 public:
   infoController()
   {
     waypoint_pub = nh_.advertise<geometry_msgs::Vector3>("/ardrone/setpoint", 2);
     map_pub = nh_.advertise<service_utd::ProbMap>("/probmap", 2);
+    searchmap_pub = nh_.advertise<service_utd::ProbMap>("/searchmap", 2);
     pose_sub = nh_.subscribe("/ardrone/pose", 2, &infoController::Callback, this);
     object_sub = nh_.subscribe("/objectdetected", 2, &infoController::detectionCallback, this);
 
@@ -68,9 +72,12 @@ public:
     setz = 0.8;
     ptime = ros::Time::now();
     ctime = ros::Time::now();
-    nsqx = 40;
-    nsqy = 40;
-    tse = new targetStateEstimator(nsqy, nsqx, 0.8, 0.2, 0.05, 0.05);
+    gridsizex = 4.0;
+    gridsizey = 3.0;
+    squaresize = 0.05;
+    nsqx = floor(gridsizex/squaresize);
+    nsqy = floor(gridsizey/squaresize);
+    tse = new targetStateEstimator(nsqy, nsqx, 0.8, 0.2, squaresize, squaresize);
     // These come from the bottom camera calibration for the ardrone2
     fv = 701.654116;
     fh = 700.490828;
@@ -103,6 +110,9 @@ public:
 
       bool detected = msg->data;
 
+      xp = z*tan(fabs(av/2.0));
+      yp = z*tan(fabs(ah/2.0));
+
       // The camera is offset 2" from the drone center in the x-axis
       float x1 = x - 2.0*0.0254 - xp;
       float x2 = x - 2.0*0.0254 + xp;
@@ -112,17 +122,16 @@ public:
       
       
       // Our grid is 2x2 meters, centered at (0,0) on the floor
-      area.x = floor(nsqx/2-nsqx*y2/2);
-      area.y = floor(nsqy/2-nsqy*x2/2);
-      xp = z*tan(fabs(av/2.0));
-      yp = z*tan(fabs(ah/2.0));
+      area.x = floor(nsqx/2-nsqx*y2/gridsizex);
+      area.y = floor(nsqy/2-nsqy*x2/gridsizey);
+
       area.width = floor(nsqx*yp);
       area.height = floor(nsqy*xp);
 
       tse->updateGrid(area, detected);
       tse->MLE();
-      cout << "Mean: " << tse->mean*(-2.0/float(nsqx))+Vec2f(1,1) << endl;
-      cout << "StdDev: " << tse->std*(-2.0/float(nsqx))+Vec2f(1,1) << endl;
+      //cout << "Mean: " << tse->mean*(-2.0/float(nsqx))+Vec2f(1,1) << endl;
+      //cout << "StdDev: " << tse->std*(-2.0/float(nsqx))+Vec2f(1,1) << endl;
 
       pm_msg.data.clear();
       pm_msg.header.seq = seqnum;
@@ -148,32 +157,63 @@ public:
   
   void computeWaypoint(const ros::TimerEvent& te)
   {
-    // This is the real controller. Once we have a probability distribution for the target
-    // location we send the drone to the most informative location. This requires the setpoint
-    // controller to be running.
+      // This is the real controller. Once we have a probability distribution for the target
+      // location we send the drone to the most informative location. This requires the setpoint
+      // controller to be running.
 
       if (area.width == 0 || area.height == 0)
       {
           return;
       }
-    
-    Mat M = tse->getGrid();
-    Mat mask = Mat::ones(area.height, area.width, CV_32F);
-    Mat result = Mat::zeros(M.rows, M.cols, CV_32F);
-    filter2D(M, result, -1, mask);
-    
-    Mat probvol = cv::abs(result - 0.5);
-    Point minloc;
-    minMaxLoc(probvol, NULL, NULL, &minloc, NULL);
-    
-    //cout << probvol << endl;
-    cout << minloc << endl;
-    
-    // Converting grid coordinates to world coordinates
-    wp_msg.x = -2.0*minloc.y/float(nsqy) + 1.0;
-    wp_msg.y = -2.0*minloc.x/float(nsqx) + 1.0;
-    wp_msg.z = 0.8;
-    waypoint_pub.publish(wp_msg);
+
+      Mat M = tse->getGrid();
+      Mat mask = Mat::ones(area.height, area.width, CV_32F);
+      Mat result = Mat::zeros(M.rows, M.cols, CV_32F);
+      filter2D(M, result, -1, mask, Point(-1,-1), 0, BORDER_CONSTANT);
+
+      Mat probvol = cv::abs(result - 0.5);
+      // We will now attempt to give more weight to the grid locations closer to the sensor.
+      Point droneloc;
+      droneloc.x = (gridsizex/2.0 - y)/squaresize;
+      droneloc.y = (gridsizey/2.0 - x)/squaresize;
+      Mat distmask = Mat::zeros(M.rows, M.cols, CV_32F);
+      for(int i=0; i < distmask.rows; i++)
+      {
+          for(int j=0; j < distmask.cols; j++)
+              distmask.at<float>(i,j) = sqrt(pow(i-droneloc.y,2) + pow(j-droneloc.x,2));
+      }
+      probvol = probvol + 0.0*distmask;
+      Point minloc;
+      minMaxLoc(probvol, NULL, NULL, &minloc, NULL);
+
+      //cout << probvol << endl;
+      cout << minloc << endl;
+
+      // Converting grid coordinates to world coordinates
+      wp_msg.x = -squaresize*minloc.y + gridsizey/2.0;
+      wp_msg.y = -squaresize*minloc.x + gridsizex/2.0;
+      wp_msg.z = 0.8;
+      cout << "[" << wp_msg.x << "," << wp_msg.y << "]" << endl;
+      cout << "Val: " << probvol.at<float>(minloc.y, minloc.x) << endl;
+      waypoint_pub.publish(wp_msg);
+
+      sm_msg.data.clear();
+      sm_msg.header.seq = seqnum;
+      sm_msg.header.stamp = ros::Time::now();
+      sm_msg.header.frame_id = "map";
+      sm_msg.width = nsqx;
+      sm_msg.height = nsqy;
+
+      for(int i=0; i < probvol.rows; i++)
+      {
+          for(int j=0; j < probvol.cols; j++)
+          {
+              sm_msg.data.push_back(probvol.at<float>(i,j));
+          }
+      }
+
+
+      searchmap_pub.publish(sm_msg);
   }
 
   

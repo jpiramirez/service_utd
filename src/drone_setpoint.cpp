@@ -145,13 +145,13 @@ public:
       setz = msg->z;
       // Defining the safety cage
       if(setz < 0.5)
-	setz = 0.5;
-      if(setz > 1)
-	setz = 1;
-      if(setx > 1) setx = 1;
-      if(setx < -1) setx = -1;
-      if(sety > 1) sety = 1;
-      if(sety < -1) sety = -1;
+          setz = 0.5;
+      if(setz > 2)
+          setz = 2;
+      if(setx > 3) setx = 3;
+      if(setx < -3) setx = -3;
+      if(sety > 3) sety = 3;
+      if(sety < -3) sety = -3;
 
   }
 

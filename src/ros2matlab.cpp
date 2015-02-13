@@ -29,6 +29,7 @@ class ros2matlab
 {
   ros::NodeHandle nh_;
   ros::Subscriber map_sub;
+  ros::Subscriber searchmap_sub;
   ros::Subscriber pose_sub;
   ros::Subscriber object_sub;
   geometry_msgs::Vector3 wp_msg;
@@ -41,25 +42,30 @@ class ros2matlab
   float av, ah;
   int nsqx, nsqy;
   Rect area;
-  int seqnum;
+  int seqnum, sseqnum;
   ofstream poses;
+  ofstream sposes;
   
 public:
   ros2matlab()
   {
     map_sub = nh_.subscribe<service_utd::ProbMap>("/probmap", 2, &ros2matlab::mapCallback, this);
+    searchmap_sub = nh_.subscribe<service_utd::ProbMap>("/searchmap", 2, &ros2matlab::searchmapCallback, this);
     pose_sub = nh_.subscribe("/ardrone/pose", 2, &ros2matlab::poseCallback, this);
     ROS_INFO_STREAM("Translating ROS messages into a parseable Matlab file");
     seqnum = 0;
+    sseqnum = 0;
     x = 0;
     y = 0;
     z = 0;
     poses.open("poses.txt", ios::out);
+    sposes.open("searchposes.txt", ios::out);
   }
 
   ~ros2matlab()
   {
     poses.close();
+    sposes.close();
   }
 
   void poseCallback(const geometry_msgs::PoseStamped::ConstPtr& msg)
@@ -98,6 +104,37 @@ public:
       poses << "," << seqnum << "," << x << "," << y << "," << z << endl;
 
       seqnum++;
+  }
+
+  void searchmapCallback(const service_utd::ProbMap::ConstPtr& msg)
+  {
+
+      char name[80];
+      sprintf(name, "%04i", sseqnum);
+      string filename(name);
+      ofstream fs;
+      filename = "searchgrid" + filename + ".txt";
+      fs.open(filename.c_str(), ios::out);
+      int count = 0;
+      for(int i=0; i < msg->height; i++)
+      {
+          for(int j=0; j < msg->width; j++)
+          {
+              fs << msg->data[count] << " " ;
+              count++;
+          }
+          fs << endl;
+      }
+      fs.close();
+
+      // Timestamp storage for visualization
+      ros::Time ctime;
+      ctime = ros::Time::now();
+      sposes << ctime.sec;
+      sposes << setfill('0') << setw(9) << ctime.nsec;
+      sposes << "," << sseqnum << "," << x << "," << y << "," << z << endl;
+
+      sseqnum++;
   }
   
   
