@@ -23,6 +23,9 @@ void targetStateEstimator::updateGrid(Rect &area, bool measurement)
       iarea.width = occgrid.cols - iarea.x;
     if(iarea.height+iarea.y-1 >= occgrid.rows)
       iarea.height = occgrid.rows - iarea.y;
+    if(iarea.x >= occgrid.cols || iarea.y >= occgrid.rows || iarea.x+iarea.width < 0 \
+         || iarea.y+iarea.height < 0)
+        return;
     fov = mask(iarea);
     fov = Scalar(1.0);
     
@@ -41,7 +44,7 @@ void targetStateEstimator::updateGrid(Rect &area, bool measurement)
     occgrid = occgrid.mul(mask);
     float factor = sum(occgrid)[0];
     //cout << "Factor: " << factor << endl;
-    if(factor > 0.0)
+    if(factor > 1e-100)
         occgrid = occgrid*(1.0/factor);
     else
     {

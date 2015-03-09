@@ -76,9 +76,9 @@ public:
       float KPy = 0.1;
       float KPz = 0.1;
       
-      float KDx = 0.1;
-      float KDy = 0.1;
-      float KDz = 0.1;
+      float KDx = 0.2;
+      float KDy = 0.2;
+      float KDz = 0.2;
       
       float Ky = 5;
       

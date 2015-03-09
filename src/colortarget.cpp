@@ -38,7 +38,7 @@ void colortarget::computeStateWithColorBlob(Mat pov)
 			for(int k=0; k < 3; k++)
 				colorDist += pow(pov.at<Vec3f>(i,j)[k]-colorVec[k], 2.0f);
 			colorDist = sqrt(colorDist);
-			if(colorDist < 120)
+            if(colorDist < 50)
 				pov.at<Vec3f>(i,j) = Vec3f(255,255,255);
 			else
 				pov.at<Vec3f>(i,j) = Vec3f(0,0,0);
