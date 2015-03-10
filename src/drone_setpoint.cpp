@@ -31,6 +31,7 @@ class droneController
   float setx, sety, setz;
   float errx, erry, errz;
   float perrx, perry, perrz;
+  vector<float> xeh, yeh, zeh;
   
 public:
   droneController()
@@ -56,6 +57,12 @@ public:
     perrz = 0;
     ptime = ros::Time::now();
     ctime = ros::Time::now();
+    for(int i=0; i < 5; i++)
+    {
+        xeh.push_back(0);
+        yeh.push_back(0);
+        zeh.push_back(0);
+    }
   }
 
   ~droneController()
@@ -67,7 +74,12 @@ public:
       ctime = ros::Time::now();
       d = ctime - ptime;
       double t = d.toSec();
-      
+
+      x = msg->pose.position.x;
+      y = msg->pose.position.y;
+      z = msg->pose.position.z;
+
+
       // This code assumes that the order in which the markers arrive is 
       // front    back    left    right
       
@@ -76,19 +88,33 @@ public:
       float KPy = 0.1;
       float KPz = 0.1;
       
-      float KDx = 0.2;
-      float KDy = 0.2;
-      float KDz = 0.2;
+      float KDx = 0.5;
+      float KDy = 0.5;
+      float KDz = 0.5;
       
       float Ky = 5;
       
-      x = msg->pose.position.x;
-      y = msg->pose.position.y;
-      z = msg->pose.position.z;
 
       errx = x - setx;
       erry = y - sety;
       errz = z - setz;
+
+      double xsum = 0, ysum = 0, zsum = 0;
+      for(int i=0; i < xeh.size()-1; i++)
+      {
+          xeh[i] = xeh[i+1];
+          yeh[i] = yeh[i+1];
+          zeh[i] = zeh[i+1];
+          xsum += xeh[i];
+          ysum += yeh[i];
+          zsum += zeh[i];
+      }
+      xeh[xeh.size()] = (errx - perrx);
+      yeh[yeh.size()] = (erry - perry);
+      zeh[zeh.size()] = (errz - perrz);
+      xsum += xeh[xeh.size()];
+      ysum += yeh[yeh.size()];
+      zsum += zeh[zeh.size()];
       
       double angle = 2.0*asin(msg->pose.orientation.z);
       
@@ -96,9 +122,9 @@ public:
       //angle = 0;
       if(fabs(angle) < 5e-1)
       {
-          control.linear.x = -KPx*errx - KDx*(errx-perrx)/t;
-          control.linear.y = -KPy*erry - KDy*(erry-perry)/t;
-          control.linear.z = -KPz*errz - KDz*(errz-perrz)/t;
+          control.linear.x = -KPx*errx - KDx*(xsum/xeh.size())/t;
+          control.linear.y = -KPy*erry - KDy*(ysum/yeh.size())/t;
+          control.linear.z = -KPz*errz - KDz*(zsum/zeh.size())/t;
       }
       else
       {
@@ -129,9 +155,11 @@ public:
       
       ctrl_pub.publish(control);
       ptime = ctime;
-      px = x;
-      py = y;
-      pz = z;
+
+      px = xsum/xeh.size();
+      py = ysum/yeh.size();
+      pz = zsum/zeh.size();
+
       perrx = errx;
       perry = erry;
       perrz = errz;

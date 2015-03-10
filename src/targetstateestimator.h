@@ -27,11 +27,15 @@ class targetStateEstimator
 {
 	Mat occgrid;
 	float alpha, beta;
+    bool randproc;
+    float stddev;
 public:
 	Vec2f mean;
 	Vec2f std;
 	targetStateEstimator(int rows, int cols, float alpha, float beta, float mppx, float mppy);
+    targetStateEstimator(int rows, int cols, float alpha, float beta, float mppx, float mppy, double stddev);
 	~targetStateEstimator();
+    void predictGrid();
 	void updateGrid(Rect &area, bool measurement);
 	Mat getGrid();
 	void  MLE();

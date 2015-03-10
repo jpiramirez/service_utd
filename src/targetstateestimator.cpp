@@ -6,10 +6,38 @@ targetStateEstimator::targetStateEstimator(int rows, int cols, float alpha, floa
     occgrid = Scalar(1/float(rows*cols));
     this->alpha = alpha;
     this->beta = beta;
+    this->randproc = false;
+    this->stddev = 0;
+}
+
+targetStateEstimator::targetStateEstimator(int rows, int cols, float alpha, float beta, float mppx, float mppy, double stddev)
+{
+    occgrid.create(rows, cols, CV_32F);
+    occgrid = Scalar(1/float(rows*cols));
+    this->alpha = alpha;
+    this->beta = beta;
+    this->randproc = true;
+    this->stddev = stddev;
 }
 
 targetStateEstimator::~targetStateEstimator()
 {
+}
+
+void targetStateEstimator::predictGrid()
+{
+    if(this->randproc == false)
+        return;
+    GaussianBlur(occgrid, occgrid, Size(0,0), this->stddev, this->stddev);
+    float factor = sum(occgrid)[0];
+    //cout << "Factor: " << factor << endl;
+    if(factor > 1e-100)
+        occgrid = occgrid*(1.0/factor);
+    else
+    {
+        cout << "The target is not in the search area" << endl;
+        occgrid = Scalar(1/float(occgrid.rows*occgrid.cols));
+    }
 }
 
 void targetStateEstimator::updateGrid(Rect &area, bool measurement)
@@ -25,7 +53,10 @@ void targetStateEstimator::updateGrid(Rect &area, bool measurement)
       iarea.height = occgrid.rows - iarea.y;
     if(iarea.x >= occgrid.cols || iarea.y >= occgrid.rows || iarea.x+iarea.width < 0 \
          || iarea.y+iarea.height < 0)
+    {
+        cout << "Sensor is outside of the search domain" << endl;
         return;
+    }
     fov = mask(iarea);
     fov = Scalar(1.0);
     

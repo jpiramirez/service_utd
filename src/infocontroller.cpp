@@ -90,7 +90,7 @@ public:
     nsqy = floor(gridsizey/squaresize);
     float alpha = 0.8;
     float beta = 0.2;
-    tse = new targetStateEstimator(nsqy, nsqx, 0.8, 0.2, squaresize, squaresize);
+    tse = new targetStateEstimator(nsqy, nsqx, 0.8, 0.2, squaresize, squaresize, 1);
 
     ROS_INFO_STREAM("PDF grid is " << nsqy << "x" << nsqx);
 
@@ -178,6 +178,7 @@ public:
       area.width = floor(yp/squaresize);
       area.height = floor(xp/squaresize);
 
+      tse->predictGrid();
       tse->updateGrid(area, detected);
       tse->MLE();
       //cout << "Mean: " << tse->mean*(-2.0/float(nsqx))+Vec2f(1,1) << endl;
@@ -251,27 +252,27 @@ public:
           for(int j=0; j < angmap.cols; j++)
               angmap.at<float>(i,j) = acos(angmap.at<float>(i,j));
 
-      double maxval;
+      double maxval, minval;
       distmask = distmask.mul(distmask);
-      minMaxLoc(distmask, NULL, &maxval);
-      distmask = distmask * 1.0/maxval;
+      minMaxLoc(distmask, &minval, &maxval);
+      distmask = (distmask-minval) * 1.0/(maxval-minval);
 
 
       Mat projmap = zcross.mul(angmap);
-      minMaxLoc(cv::abs(angmap), NULL, &maxval);
+      minMaxLoc(angmap, &minval, &maxval);
       if(fabs(maxval) > 1e-30)
-          projmap = projmap * 1.0/maxval;
+          projmap = (projmap-minval) * 1.0/(maxval-minval);
       else
           projmap = Mat::zeros(M.rows, M.cols, CV_32F);
 
       Mat covermap(M.rows, M.cols, CV_32F);
-      minMaxLoc(probvol, NULL, &maxval);
+      minMaxLoc(probvol, &minval, &maxval);
       if(fabs(maxval) > 1e-30)
-          covermap = probvol * 1.0/maxval;
+          covermap = (probvol-minval) * 1.0/(maxval-minval);
       else
           covermap = Mat::zeros(M.rows, M.cols, CV_32F);
 
-      Mat costfnc = 0.9*covermap + 0.01*projmap + 0.09*distmask;
+      Mat costfnc = 0.5*covermap + 0.1*projmap + 0.4*distmask;
       minMaxLoc(costfnc, NULL, &maxval);
 
       Point minloc;
@@ -311,7 +312,7 @@ public:
 
       Mat tempimg(M.rows, M.cols, CV_32FC3);
 
-      double minval;
+
       minMaxLoc(costfnc, &minval, &maxval);
       if(fabs(maxval) > 1e-100)
           covermap = costfnc * 1.0/maxval;
@@ -322,9 +323,9 @@ public:
       visimage.at<Vec3b>(minloc.y, minloc.x)[0] = 0;
       visimage.at<Vec3b>(minloc.y, minloc.x)[1] = 0;
       visimage.at<Vec3b>(minloc.y, minloc.x)[2] = 255;
-      visimage.at<Vec3b>(floor(nsqy/2-nsqy*x/gridsizey), floor(nsqx/2-nsqx*y/gridsizex))[0] = 255;
-      visimage.at<Vec3b>(floor(nsqy/2-nsqy*x/gridsizey), floor(nsqx/2-nsqx*y/gridsizex))[1] = 0;
-      visimage.at<Vec3b>(floor(nsqy/2-nsqy*x/gridsizey), floor(nsqx/2-nsqx*y/gridsizex))[2] = 255;
+//      visimage.at<Vec3b>(floor(nsqy/2-nsqy*x/gridsizey), floor(nsqx/2-nsqx*y/gridsizex))[0] = 255;
+//      visimage.at<Vec3b>(floor(nsqy/2-nsqy*x/gridsizey), floor(nsqx/2-nsqx*y/gridsizex))[1] = 0;
+//      visimage.at<Vec3b>(floor(nsqy/2-nsqy*x/gridsizey), floor(nsqx/2-nsqx*y/gridsizex))[2] = 255;
       rectangle(visimage, area, Scalar(0,255,0));
 
       resize(visimage, visimagesc, visimagesc.size());
