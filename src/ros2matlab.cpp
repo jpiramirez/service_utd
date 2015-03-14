@@ -30,11 +30,11 @@ class ros2matlab
   ros::NodeHandle nh_;
   ros::Subscriber map_sub;
   ros::Subscriber searchmap_sub;
-  ros::Subscriber pose_sub;
+  ros::Subscriber pose_sub, tgtpose_sub;
   ros::Subscriber object_sub;
   geometry_msgs::Vector3 wp_msg;
   service_utd::ProbMap pm_msg;
-  float x, y, z;
+  float x, y, z, tx, ty, tz;
   ros::Time ptime, ctime;
   ros::Duration d;
   targetStateEstimator *tse;
@@ -52,12 +52,16 @@ public:
     map_sub = nh_.subscribe<service_utd::ProbMap>("/probmap", 2, &ros2matlab::mapCallback, this);
     searchmap_sub = nh_.subscribe<service_utd::ProbMap>("/searchmap", 2, &ros2matlab::searchmapCallback, this);
     pose_sub = nh_.subscribe("/ardrone/pose", 2, &ros2matlab::poseCallback, this);
+    tgtpose_sub = nh_.subscribe("/target/pose", 2, &ros2matlab::tgtposeCallback, this);
     ROS_INFO_STREAM("Translating ROS messages into a parseable Matlab file");
     seqnum = 0;
     sseqnum = 0;
     x = 0;
     y = 0;
     z = 0;
+    tx = 0;
+    ty = 0;
+    tz = 0;
     poses.open("poses.txt", ios::out);
     sposes.open("searchposes.txt", ios::out);
   }
@@ -73,6 +77,13 @@ public:
       x = msg->pose.position.x;
       y = msg->pose.position.y;
       z = msg->pose.position.z;
+  }
+
+  void tgtposeCallback(const geometry_msgs::PoseStamped::ConstPtr& msg)
+  {
+      tx = msg->pose.position.x;
+      ty = msg->pose.position.y;
+      tz = msg->pose.position.z;
   }
   
   void mapCallback(const service_utd::ProbMap::ConstPtr& msg)
@@ -101,7 +112,8 @@ public:
       ctime = ros::Time::now();
       poses << ctime.sec;
       poses << setfill('0') << setw(9) << ctime.nsec;
-      poses << "," << seqnum << "," << x << "," << y << "," << z << endl;
+      poses << "," << seqnum << "," << x << "," << y << "," << z;
+      poses << "," << tx << "," << ty << "," << tz << endl;
 
       seqnum++;
   }
@@ -132,7 +144,8 @@ public:
       ctime = ros::Time::now();
       sposes << ctime.sec;
       sposes << setfill('0') << setw(9) << ctime.nsec;
-      sposes << "," << sseqnum << "," << x << "," << y << "," << z << endl;
+      sposes << "," << sseqnum << "," << x << "," << y << "," << z;
+      sposes << "," << tx << "," << ty << "," << tz << endl;
 
       sseqnum++;
   }

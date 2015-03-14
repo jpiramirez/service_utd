@@ -80,7 +80,7 @@ public:
     }
     setx = 0;
     sety = 0;
-    setz = 0.8;
+    setz = 1.4;
     ptime = ros::Time::now();
     ctime = ros::Time::now();
     gridsizex = 4.0;
@@ -90,7 +90,8 @@ public:
     nsqy = floor(gridsizey/squaresize);
     float alpha = 0.8;
     float beta = 0.2;
-    tse = new targetStateEstimator(nsqy, nsqx, 0.8, 0.2, squaresize, squaresize, 1);
+    tse = new targetStateEstimator(nsqy, nsqx, 0.8, 0.2, squaresize, squaresize, 0.5);
+//    tse = new targetStateEstimator(nsqy, nsqx, 0.8, 0.2, squaresize, squaresize);
 
     ROS_INFO_STREAM("PDF grid is " << nsqy << "x" << nsqx);
 
@@ -272,7 +273,7 @@ public:
       else
           covermap = Mat::zeros(M.rows, M.cols, CV_32F);
 
-      Mat costfnc = 0.5*covermap + 0.1*projmap + 0.4*distmask;
+      Mat costfnc = 0.3*covermap + 0.1*projmap + 0.6*distmask;
       minMaxLoc(costfnc, NULL, &maxval);
 
       Point minloc;
@@ -286,7 +287,7 @@ public:
       //wp_msg.y = -squaresize*minloc.x + gridsizex/2.0;
       wp_msg.x = xcoords.at<float>(minloc.y, minloc.x)+x;
       wp_msg.y = ycoords.at<float>(minloc.y, minloc.x)+y;
-      wp_msg.z = 0.8;
+      wp_msg.z = 1.0;
       cout << "[" << wp_msg.x << "," << wp_msg.y << "]" << endl;
       cout << "Val: " << probvol.at<float>(minloc.y, minloc.x) << endl;
       waypoint_pub.publish(wp_msg);

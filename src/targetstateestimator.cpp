@@ -28,7 +28,7 @@ void targetStateEstimator::predictGrid()
 {
     if(this->randproc == false)
         return;
-    GaussianBlur(occgrid, occgrid, Size(0,0), this->stddev, this->stddev);
+    GaussianBlur(occgrid, occgrid, Size(7,7), this->stddev, this->stddev);
     float factor = sum(occgrid)[0];
     //cout << "Factor: " << factor << endl;
     if(factor > 1e-100)
