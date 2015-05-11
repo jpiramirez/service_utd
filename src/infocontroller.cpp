@@ -83,15 +83,15 @@ public:
     setz = 1.4;
     ptime = ros::Time::now();
     ctime = ros::Time::now();
-    gridsizex = 4.0;
-    gridsizey = 3.0;
+    gridsizex = 3;
+    gridsizey = 2;
     squaresize = 0.05;
     nsqx = floor(gridsizex/squaresize);
     nsqy = floor(gridsizey/squaresize);
     float alpha = 0.8;
     float beta = 0.2;
-    tse = new targetStateEstimator(nsqy, nsqx, 0.8, 0.2, squaresize, squaresize, 0.5);
-//    tse = new targetStateEstimator(nsqy, nsqx, 0.8, 0.2, squaresize, squaresize);
+//    tse = new targetStateEstimator(nsqy, nsqx, 0.8, 0.2, squaresize, squaresize, 0.5);
+    tse = new targetStateEstimator(nsqy, nsqx, 0.8, 0.2, squaresize, squaresize);
 
     ROS_INFO_STREAM("PDF grid is " << nsqy << "x" << nsqx);
 
@@ -287,7 +287,7 @@ public:
       //wp_msg.y = -squaresize*minloc.x + gridsizex/2.0;
       wp_msg.x = xcoords.at<float>(minloc.y, minloc.x)+x;
       wp_msg.y = ycoords.at<float>(minloc.y, minloc.x)+y;
-      wp_msg.z = 1.0;
+      wp_msg.z = 0.5;
       cout << "[" << wp_msg.x << "," << wp_msg.y << "]" << endl;
       cout << "Val: " << probvol.at<float>(minloc.y, minloc.x) << endl;
       waypoint_pub.publish(wp_msg);

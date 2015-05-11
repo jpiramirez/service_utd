@@ -11,6 +11,7 @@
 #include <geometry_msgs/Twist.h>
 #include <geometry_msgs/Vector3.h>
 #include <eigen3/Eigen/Dense>
+#include <eigen3/Eigen/Geometry>
 #include <math.h>
 
 #define HORIZON 10
@@ -51,7 +52,7 @@ public:
     pz = 0;
     setx = 0;
     sety = 0;
-    setz = 1.4;
+    setz = 0.5;
     errx = 0;
     erry = 0;
     errz = 0;
@@ -179,6 +180,9 @@ public:
       d = ctime - ptime;
       double t = d.toSec();
 
+      if(t < 0.02)
+          return;
+
       x = msg->pose.position.x;
       y = msg->pose.position.y;
       z = msg->pose.position.z;
@@ -192,17 +196,20 @@ public:
       float KPy = 0.1;
       float KPz = 0.2;
 
-      float KDx = 0.0002;
-      float KDy = 0.0002;
-      float KDz = 0.0004;
+      float KDx = 0.2;
+      float KDy = 0.2;
+      float KDz = 0.4;
 
-      float Ky = 5;
+      float Ky = 2;
 
-      float n = 10;
+      float n = 1;
 
       double xsum = 0, ysum = 0, zsum = 0, asum = 0;
 
       double angle = 2.0*asin(msg->pose.orientation.z);
+      geometry_msgs::Quaternion q = msg->pose.orientation;
+      angle = atan2(2*(q.w*q.z+q.x*q.y), 1-2*(q.y*q.y+q.z*q.z));
+      cout << "Yaw: " << angle << endl;
 
       for(int i=0; i < HORIZON-1; i++)
       {
@@ -239,10 +246,10 @@ public:
       //if(fabs(angle) < 1e-2)
       //angle = 0;
 
-      errx = (x - setx)/n + n*perrx/(n+1);
-      erry = (y - sety)/n + n*perry/(n+1);
-      errz = (z - setz)/n + n*perrz/(n+1);
-      ah = angle/n + n*angle/(n+1);
+      errx = (x - setx)/(n+1) + n*perrx/(n+1);
+      erry = (y - sety)/(n+1) + n*perry/(n+1);
+      errz = (z - setz)/(n+1) + n*perrz/(n+1);
+      ah = angle/(n+1) + n*pah/(n+1);
 
       cx = -KPx*errx - KDx*(errx-perrx)/t;
       cy = -KPy*erry - KDy*(erry-perry)/t;
@@ -256,7 +263,7 @@ public:
 
       control.angular.x = 0;
       control.angular.y = 0;
-      control.angular.z = -Ky*angle;
+      control.angular.z = -Ky*ah;
 
 
       ctrl_pub.publish(control);

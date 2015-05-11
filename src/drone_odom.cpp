@@ -10,6 +10,7 @@
 #include <geometry_msgs/PoseStamped.h>
 #include <service_utd/Markers.h>
 #include <eigen3/Eigen/Dense>
+#include <eigen3/Eigen/Geometry>
 #include <math.h>
 
 using namespace std;
@@ -24,6 +25,8 @@ class droneOdom
   ros::Time ptime, ctime;
   ros::Duration d;
   geometry_msgs::PoseStamped odom, tgtodom;
+  Eigen::Matrix3Xd dronepoints;
+  int mcount;
   
 public:
   droneOdom()
@@ -41,10 +44,71 @@ public:
     odom.header.frame_id = "map";
     tgtodom.header.seq = 0;
     tgtodom.header.frame_id = "map";
+    dronepoints.resize(3, 4);
+    dronepoints << 0, 1, 1, 1,
+                   0, 1, 1, 1,
+                   0, 1, 1, 1;
+    mcount = 0;
   }
 
   ~droneOdom()
   {
+  }
+
+  // The following function is from Oleg Alexandrov at NASA
+  // This function is in the public domain
+
+  // Given two sets of 3D points, find the rotation + translation + scale
+  // which best maps the first set to the second.
+  // Source: http://en.wikipedia.org/wiki/Kabsch_algorithm
+  // The input 3D points are stored as columns.
+  Eigen::Affine3d Find3DAffineTransform(Eigen::Matrix3Xd in, Eigen::Matrix3Xd out) {
+      // Default output
+      Eigen::Affine3d A;
+      A.linear() = Eigen::Matrix3d::Identity(3, 3);
+      A.translation() = Eigen::Vector3d::Zero();
+      if (in.cols() != out.cols())
+          throw "Find3DAffineTransform(): input data mis-match";
+      // First find the scale, by finding the ratio of sums of some distances,
+      // then bring the datasets to the same scale.
+      double dist_in = 0, dist_out = 0;
+      for (int col = 0; col < in.cols()-1; col++) {
+          dist_in += (in.col(col+1) - in.col(col)).norm();
+          dist_out += (out.col(col+1) - out.col(col)).norm();
+      }
+      if (dist_in <= 0 || dist_out <= 0)
+          return A;
+      double scale = dist_out/dist_in;
+      out /= scale;
+      // Find the centroids then shift to the origin
+      Eigen::Vector3d in_ctr = Eigen::Vector3d::Zero();
+      Eigen::Vector3d out_ctr = Eigen::Vector3d::Zero();
+      for (int col = 0; col < in.cols(); col++) {
+          in_ctr += in.col(col);
+          out_ctr += out.col(col);
+      }
+      in_ctr /= in.cols();
+      out_ctr /= out.cols();
+      for (int col = 0; col < in.cols(); col++) {
+          in.col(col) -= in_ctr;
+          out.col(col) -= out_ctr;
+      }
+      // SVD
+      Eigen::MatrixXd Cov = in * out.transpose();
+      Eigen::JacobiSVD<Eigen::MatrixXd> svd(Cov, Eigen::ComputeThinU | Eigen::ComputeThinV);
+      // Find the rotation
+      double d = (svd.matrixV() * svd.matrixU().transpose()).determinant();
+      if (d > 0)
+          d = 1.0;
+      else
+          d = -1.0;
+      Eigen::Matrix3d I = Eigen::Matrix3d::Identity(3, 3);
+      I(2, 2) = d;
+      Eigen::Matrix3d R = svd.matrixV() * I * svd.matrixU().transpose();
+      // The final transform
+      A.linear() = scale * R;
+      A.translation() = scale*(out_ctr - R*in_ctr);
+      return A;
   }
 
   void navdataCallback(const service_utd::Markers::ConstPtr& msg)
@@ -54,6 +118,7 @@ public:
       double t = d.toSec();
       Vector3d front, back, left, right;
       Vector3d torig, tfront, tleft, tright;
+      Eigen::Matrix3Xd dronecurpos;
       
       // This code assumes that the order in which the markers arrive is 
       // front    back    left    right
@@ -94,6 +159,30 @@ public:
                           1e-3*msg->markers[i].translation.z;
           }
       }
+
+      Eigen::Quaterniond q;
+      dronecurpos.resize(3,4);
+      if(dronevisible)
+      {
+          dronecurpos << front(0), back(0), left(0), right(0),
+                         front(1), back(1), left(1), right(1),
+                         front(2), back(2), left(2), right(2);
+          if(mcount < 10)
+          {
+              dronepoints << front(0), back(0), left(0), right(0),
+                             front(1), back(1), left(1), right(1),
+                             front(2), back(2), left(2), right(2);
+              Eigen::Matrix3Xd originp;
+              originp.resize(3, 4);
+              originp << front(0), front(0), front(0), front(0),
+                         front(1), front(1), front(1), front(1),
+                         front(2), front(2), front(2), front(2);
+              dronepoints = dronepoints - originp;
+          }
+
+          Eigen::Affine3d T = Find3DAffineTransform(dronepoints, dronecurpos);
+          q = T.rotation();
+      }
       
       Vector3d vec1 = front - back;
       Vector3d ivec(1, 0, 0);
@@ -112,6 +201,13 @@ public:
       odom.pose.orientation.x = 0.0;
       odom.pose.orientation.y = 0.0;
       odom.pose.orientation.z = sin(yaw/2.0);
+      odom.pose.position.x = front[0];
+      odom.pose.position.y = front[1];
+      odom.pose.position.z = front[2];
+      odom.pose.orientation.w = q.w();
+      odom.pose.orientation.x = q.x();
+      odom.pose.orientation.y = q.y();
+      odom.pose.orientation.z = q.z();
       if(dronevisible)
         odom_pub.publish(odom);
 
@@ -132,6 +228,8 @@ public:
 
       if(dronevisible)
         ptime = ctime;
+
+      mcount++;
   }
 
 };
@@ -140,6 +238,7 @@ int main(int argc, char** argv)
 {
   ros::init(argc, argv, "drone_odom");
   droneOdom dr;
+  ROS_INFO_STREAM("Starting to compute the ARDrone pose.");
   ros::spin();
   return 0;
 }
