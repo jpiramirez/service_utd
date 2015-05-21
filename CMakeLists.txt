@@ -15,6 +15,7 @@ find_package(catkin REQUIRED COMPONENTS
   sensor_msgs
   std_msgs
   nav_msgs
+  tf
 )
 
 find_package(OpenCV REQUIRED)
@@ -129,6 +130,7 @@ add_executable(targetdetector src/targetdetector.cpp src/detecttarget.cpp)
 add_executable(unittest src/unittest.cpp src/targetstateestimator.cpp)
 add_executable(drone_odom src/drone_odom.cpp)
 add_executable(drone_setpoint src/drone_setpoint.cpp)
+add_executable(tf2posestamped src/tf2posestamped.cpp)
 add_executable(infocontroller src/infocontroller.cpp src/targetstateestimator.cpp)
 add_executable(ros2matlab src/ros2matlab.cpp)
 add_executable(xml2octave src/xml2octave.cpp)
@@ -163,6 +165,10 @@ target_link_libraries(drone_setpoint
  )
  
 target_link_libraries(infocontroller
+   ${catkin_LIBRARIES} ${OpenCV_LIBRARIES}
+ )
+
+target_link_libraries(tf2posestamped
    ${catkin_LIBRARIES} ${OpenCV_LIBRARIES}
  )
  
