@@ -209,7 +209,7 @@ public:
       double angle = 2.0*asin(msg->pose.orientation.z);
       geometry_msgs::Quaternion q = msg->pose.orientation;
       angle = atan2(2*(q.w*q.z+q.x*q.y), 1-2*(q.y*q.y+q.z*q.z));
-      cout << "Yaw: " << angle << endl;
+     // cout << "Yaw: " << angle << endl;
 
       for(int i=0; i < HORIZON-1; i++)
       {
@@ -295,7 +295,7 @@ public:
       if(setx < -3) setx = -3;
       if(sety > 3) sety = 3;
       if(sety < -3) sety = -3;
-
+      ROS_INFO_STREAM("New setpoint: " << setx << " " << sety << " " << setz);
   }
 
 };
