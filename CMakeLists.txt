@@ -16,6 +16,7 @@ find_package(catkin REQUIRED COMPONENTS
   std_msgs
   nav_msgs
   tf
+  cmake_modules
 )
 
 find_package(OpenCV REQUIRED)
@@ -103,7 +104,7 @@ generate_messages(
 catkin_package(
 #  INCLUDE_DIRS include
 #  LIBRARIES service_utd
-#  CATKIN_DEPENDS camera_calibration_parsers cv_bridge geometry_msgs image_transport roscpp sensor_msgs std_msgs
+  CATKIN_DEPENDS camera_calibration_parsers cv_bridge geometry_msgs image_transport roscpp sensor_msgs std_msgs message_runtime
 #  DEPENDS system_lib
 )
 
@@ -138,7 +139,17 @@ add_executable(drone_waypoint_nav src/drone_waypoint_nav src/targetstateestimato
 
 ## Add cmake target dependencies of the executable/library
 ## as an example, message headers may need to be generated before nodes
-# add_dependencies(service_utd_node service_utd_generate_messages_cpp)
+add_dependencies(vispose service_utd_generate_messages_cpp)
+add_dependencies(colorpose service_utd_generate_messages_cpp)
+add_dependencies(targetdetector service_utd_generate_messages_cpp)
+add_dependencies(unittest service_utd_generate_messages_cpp)
+add_dependencies(drone_odom service_utd_generate_messages_cpp)
+add_dependencies(drone_setpoint service_utd_generate_messages_cpp)
+add_dependencies(infocontroller service_utd_generate_messages_cpp)
+add_dependencies(tf2posestamped service_utd_generate_messages_cpp)
+add_dependencies(ros2matlab service_utd_generate_messages_cpp)
+add_dependencies(xml2octave service_utd_generate_messages_cpp)
+add_dependencies(drone_waypoint_nav service_utd_generate_messages_cpp)
 
 ## Specify libraries to link a library or executable target against
 target_link_libraries(vispose

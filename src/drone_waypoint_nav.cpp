@@ -64,8 +64,8 @@ public:
     waypoint_pub = nh_.advertise<geometry_msgs::Vector3>("/ardrone/setpoint", 1);
     map_pub = nh_.advertise<service_utd::ProbMap>("/probmap", 2);
     searchmap_pub = nh_.advertise<service_utd::ProbMap>("/searchmap", 2);
-    pose_sub = nh_.subscribe("/ardrone/pose", 2, &waypointNav::Callback, this);
-    object_sub = nh_.subscribe("/objectdetected", 2, &waypointNav::detectionCallback, this);
+    pose_sub = nh_.subscribe("/ardrone/pose", 1, &waypointNav::Callback, this);
+    object_sub = nh_.subscribe("/objectdetected", 1, &waypointNav::detectionCallback, this);
 
     ROS_INFO_STREAM("Set point controller initialized.");
     x = 0.0;
@@ -74,7 +74,8 @@ public:
     px = 0;
     py = 0;
     pz = 0;
-    for(int i=0; i < 10; i++)
+    int i;
+    for(i=0; i < 10; i++)
     {
         xh.push_back(0);
         yh.push_back(0);
@@ -122,25 +123,48 @@ public:
 
     timer = nh_.createTimer(ros::Duration(0.2), &waypointNav::computeWaypoint, this);
 
-    nh_.getParam("/waypoints/x", wpx);
-    nh_.getParam("/waypoints/y", wpy);
-    nh_.getParam("/waypoints/z", wpz);
+    ROS_INFO_STREAM("Loading waypoint list");
+    std::string xpts;
+    nh_.param<std::string>("/waypoints/x", xpts, "0 1 1 0");
+    std::string ypts;
+    nh_.param<std::string>("/waypoints/y", ypts, "0 0 1 1");
+    std::string zpts;
+    nh_.param<std::string>("/waypoints/z", zpts, "1 1 1 1");
+    std::stringstream ssx(xpts);
+    std::stringstream ssy(ypts);
+    std::stringstream ssz(zpts);
+    
+    double td;
+    while(!ssx.eof())
+    {
+      ssx >> td;
+      wpx.push_back(td);
+      ssy >> td;
+      wpy.push_back(td);
+      ssz >> td;
+      wpz.push_back(td);
+    }
+    
     wpcount = 0;
 
     namedWindow("pdf");
 
     ROS_INFO_STREAM("Waypoint list: ");
     cout << wpx.size() << endl;
-    for(int i=0; i < wpx.size(); i++)
-        cout << wpx[i] << endl;
+    for(i=0; i < wpx.size(); i++)
+    {
+        cout << wpx[i] << ", " << wpy[i] << ", " << wpz[i] << endl;
+    }
+    cout << "next" << endl;
 
-
+    ROS_INFO_STREAM("Publishing first waypoint ");
     wp_msg.x = (double)wpx[0];
     wp_msg.y = (double)wpy[0];
     wp_msg.z = (double)wpz[0];
-    while(waypoint_pub.getNumSubscribers() == 0)
-        cout << "Waiting for subscribers" << endl;
-    waypoint_pub.publish(wp_msg);
+    //while(waypoint_pub.getNumSubscribers() == 0)
+    //    cout << "Waiting for subscribers" << endl;
+    
+    //waypoint_pub.publish(wp_msg);
     ROS_INFO_STREAM("Heading towards waypoint " << wpcount);
   }
 

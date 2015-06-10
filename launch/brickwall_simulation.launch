@@ -2,13 +2,15 @@
 
 <launch>
   <param name="/vispose/camera_info_url" value="$(find service_utd)/calibration.yml" />
+
+  <node name="drone_setpoint" pkg="service_utd" type="drone_setpoint" respawn="true" />
   
   <include file="$(find service_utd)/launch/quadrotor_empty_world.launch"/>
   
   <node name="tf2posestamped" pkg="service_utd" type="tf2posestamped" respawn="true" />
   
   <node name="targetdetector" pkg="service_utd" type="targetdetector" respawn="true" >
-    <param name="/vispose/color" value="0 0 255" />
+    <param name="/vispose/color" value="0 0 255" type="str"/>
     <remap from="image" to="/downward_cam/camera/image" />
   </node>
   
@@ -16,7 +18,8 @@
   
   <node name="drone_joystick" pkg="service_utd" type="joy2drone.py" respawn="true" />
   
-  <node name="drone_setpoint" pkg="service_utd" type="drone_setpoint" respawn="true" />
-  
-  <node name="waypoint_nav" pkg="service_utd" type="drone_waypoint_nav" respawn="true" />
+  <param name="/waypoints/x" value="-2 2 2 -2 -2 2" />
+  <param name="/waypoints/y" value="1.5 1.5 0 0 -1.5 -1.5" />
+  <param name="/waypoints/z" value="2 2 2 2 2 2" />
+  <node name="drone_waypoint_nav" pkg="service_utd" type="drone_waypoint_nav" respawn="true" />
 </launch>
