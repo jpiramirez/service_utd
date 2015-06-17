@@ -6,7 +6,7 @@ from sensor_msgs.msg import Joy
 from geometry_msgs.msg import Twist
 from std_msgs.msg import Empty
 
-pub = rospy.Publisher('/cmd_vel', Twist)
+pub = rospy.Publisher('/cmd_vel', Twist, queue_size=1)
 state = 0
 
 def callback(data):
@@ -19,12 +19,12 @@ def callback(data):
 	pmsg.linear.z = data.axes[3]
 	pmsg.angular.z = data.axes[2]
 	if data.buttons[3] > 0 and state == 0:
-		epub = rospy.Publisher('/ardrone/takeoff', Empty)
+		epub = rospy.Publisher('/ardrone/takeoff', Empty, queue_size=1)
 		epub.publish(Empty())
 		state = 1
 		rospy.loginfo(rospy.get_name() + " Taking off...")
 	if data.buttons[0] > 0 and state == 1:
-		epub = rospy.Publisher('/ardrone/land', Empty)
+		epub = rospy.Publisher('/ardrone/land', Empty, queue_size=1)
 		epub.publish(Empty())
 		state = 0
 		rospy.loginfo(rospy.get_name() + " Landing...")
