@@ -32,7 +32,9 @@ class infoController
   ros::Publisher searchmap_pub;
   ros::Subscriber pose_sub;
   ros::Subscriber object_sub;
+  ros::Subscriber tgtpose_sub;
   geometry_msgs::Vector3 wp_msg;
+  geometry_msgs::Pose targetPosition;
   service_utd::ProbMap pm_msg, sm_msg;
   float x, y, z;
   ros::Time ptime, ctime;
@@ -55,6 +57,12 @@ class infoController
   Mat ycoords;
   double Copt;
   vector<float> xh, yh, zh;
+  float alpha, beta;
+  bool detected;
+
+  bool targetFound;
+  double confThresh;
+  double detectConfidence;
   
 public:
   infoController()
@@ -64,6 +72,7 @@ public:
     searchmap_pub = nh_.advertise<service_utd::ProbMap>("/searchmap", 2);
     pose_sub = nh_.subscribe("/ardrone/pose", 2, &infoController::Callback, this);
     object_sub = nh_.subscribe("/objectdetected", 2, &infoController::detectionCallback, this);
+    tgtpose_sub = nh_.subscribe("/objectpose", 1, &infoController::targetPositionCallback, this);
 
     ROS_INFO_STREAM("Set point controller initialized.");
     x = 0.0;
@@ -88,10 +97,10 @@ public:
     squaresize = 0.05;
     nsqx = floor(gridsizex/squaresize);
     nsqy = floor(gridsizey/squaresize);
-    float alpha = 0.8;
-    float beta = 0.2;
-//    tse = new targetStateEstimator(nsqy, nsqx, 0.8, 0.2, squaresize, squaresize, 0.5);
-    tse = new targetStateEstimator(nsqy, nsqx, 0.8, 0.2, squaresize, squaresize);
+    alpha = 0.8;
+    beta = 0.2;
+    tse = new targetStateEstimator(nsqy, nsqx, 0.8, 0.2, squaresize, squaresize, 0.5);
+    //tse = new targetStateEstimator(nsqy, nsqx, 0.8, 0.2, squaresize, squaresize);
 
     ROS_INFO_STREAM("PDF grid is " << nsqy << "x" << nsqx);
 
@@ -121,10 +130,21 @@ public:
     timer = nh_.createTimer(ros::Duration(0.1), &infoController::computeWaypoint, this);
 
     namedWindow("pdf");
+
+    targetFound = false;
+    confThresh = 0.95;
+    detectConfidence = 0;
+
+    detected = false;
   }
 
   ~infoController()
   {
+  }
+
+  void targetPositionCallback(const geometry_msgs::Pose::ConstPtr& msg)
+  {
+      targetPosition = *msg;
   }
 
   void Callback(const geometry_msgs::PoseStamped::ConstPtr& msg)
@@ -156,7 +176,7 @@ public:
   void detectionCallback(const std_msgs::Bool::ConstPtr& msg)
   {
 
-      bool detected = msg->data;
+      detected = msg->data;
 
       xp = 2.0*z*tan(fabs(av/2.0));
       yp = 2.0*z*tan(fabs(ah/2.0));
@@ -201,6 +221,16 @@ public:
           }
       }
 
+      // Visualizing the pdf
+//      double minval, maxval;
+//      minMaxLoc(data, &minval, &maxval);
+//      data = (255.0/maxval)*data;
+//      Mat probim = Mat::zeros(data.cols, data.rows, CV_8UC3);
+//      Mat tempim = Mat::zeros(data.cols, data.rows, CV_8UC1);
+//      data.convertTo(tempim, CV_8UC1);
+//      cvtColor(tempim, probim, CV_GRAY2BGR);
+//      imshow("pdf", probim);
+//      waitKey(3);
 
       map_pub.publish(pm_msg);
 
@@ -218,10 +248,64 @@ public:
           return;
       }
 
+
+
       Mat M = tse->getGrid();
       Mat mask = Mat::ones(area.height, area.width, CV_32F);
       Mat result = Mat::zeros(M.rows, M.cols, CV_32F);
       filter2D(M, result, -1, mask, Point(-1,-1), 0, BORDER_CONSTANT);
+
+      Mat pmask, fov;
+      pmask = Mat::zeros(M.rows, M.cols, CV_32F);
+      Rect iarea = area;
+      if(iarea.x < 0) iarea.x = 0;
+      if(iarea.y < 0) iarea.y = 0;
+      if(iarea.width+iarea.x-1 >= M.cols)
+        iarea.width = M.cols - iarea.x;
+      if(iarea.height+iarea.y-1 >= M.rows)
+        iarea.height = M.rows - iarea.y;
+      if(iarea.x >= M.cols || iarea.y >= M.rows || iarea.x+iarea.width < 0 \
+           || iarea.y+iarea.height < 0)
+      {
+          cout << "Sensor is outside of the search domain" << endl;
+          return;
+      }
+      fov = pmask(iarea);
+      fov = Scalar(1.0);
+
+      Mat probxS = M.mul(pmask);
+      double pxinS = sum(probxS)[0];
+
+      //detectConfidence = alpha*pxinS / (alpha*pxinS + beta*(1-pxinS));
+
+      if(detected)
+      {
+          detectConfidence = alpha*pxinS / (alpha*pxinS + beta*(1-pxinS));
+      }
+      else
+      {
+          detectConfidence = (1-alpha)*pxinS / ((1-alpha)*pxinS + (1-beta)*(1-pxinS));
+      }
+
+      if(detectConfidence > confThresh)
+      {
+          targetFound = true;
+      }
+      else
+          targetFound = false;
+
+      cout << "Detection confidence: " << detectConfidence << endl;
+
+      // If the target has been declared as Found, then switch to minimize the position error
+      // between the drone and the target.
+      if(targetFound)
+      {
+          wp_msg.x = targetPosition.position.x+x;
+          wp_msg.y = targetPosition.position.y+y;
+          wp_msg.z = 0.5;
+          waypoint_pub.publish(wp_msg);
+          return;
+      }
 
       Mat probvol = cv::abs(result - Copt);
       // We will now attempt to give more weight to the grid locations closer to the sensor.

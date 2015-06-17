@@ -24,6 +24,7 @@ class ImageConverter
 {
   ros::NodeHandle nh_;
   ros::Publisher pose_pub;
+  ros::Publisher tgtpose_pub;
   image_transport::ImageTransport it_;
   image_transport::Subscriber image_sub_;
   image_transport::Publisher image_pub_;
@@ -38,6 +39,7 @@ public:
     image_pub_ = it_.advertise("immarkers", 1);
     image_sub_ = it_.subscribe("image", 1, &ImageConverter::imageCb, this);
     pose_pub = nh_.advertise<std_msgs::Bool>("/objectdetected", 2);
+    tgtpose_pub = nh_.advertise<geometry_msgs::Pose>("/objectpose", 1);
     nh_.param("/vispose/targetsize", vt.tgtSize, 0.1);
     ROS_INFO_STREAM("Target size is " << vt.tgtSize);
 
@@ -106,8 +108,9 @@ public:
 
     if(vt.targetFound())
     {
-        tgtPose.position.x = vt.position.val[0];
-        tgtPose.position.y = vt.position.val[1];
+        // The target position is being given relative to the drone pose
+        tgtPose.position.y = vt.position.val[0];
+        tgtPose.position.x = vt.position.val[1];
         tgtPose.position.z = vt.position.val[2];
     
         tgtPose.orientation.w = vt.orientation.val[0];
@@ -115,7 +118,8 @@ public:
         tgtPose.orientation.y = vt.orientation.val[2];
         tgtPose.orientation.z = vt.orientation.val[3];
 
-	tfound.data = true;
+        tfound.data = true;
+        tgtpose_pub.publish(tgtPose);
     }
     else
 	tfound.data = false;

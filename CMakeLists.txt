@@ -153,47 +153,47 @@ add_dependencies(drone_waypoint_nav service_utd_generate_messages_cpp)
 
 ## Specify libraries to link a library or executable target against
 target_link_libraries(vispose
-   ${catkin_LIBRARIES} ${OpenCV_LIBRARIES}
+   ${catkin_LIBRARIES} ${OpenCV_LIBS}
  )
 
 target_link_libraries(colorpose
-   ${catkin_LIBRARIES} ${OpenCV_LIBRARIES}
+   ${catkin_LIBRARIES} ${OpenCV_LIBS}
  )
 
 target_link_libraries(targetdetector
-   ${catkin_LIBRARIES} ${OpenCV_LIBRARIES}
+   ${catkin_LIBRARIES} ${OpenCV_LIBS}
  )
  
 target_link_libraries(unittest
-   ${catkin_LIBRARIES} ${OpenCV_LIBRARIES}
+   ${catkin_LIBRARIES} ${OpenCV_LIBS}
  )
 
 target_link_libraries(drone_odom
-   ${catkin_LIBRARIES} ${OpenCV_LIBRARIES}
+   ${catkin_LIBRARIES} ${OpenCV_LIBS}
  )
  
 target_link_libraries(drone_setpoint
-   ${catkin_LIBRARIES} ${OpenCV_LIBRARIES}
+   ${catkin_LIBRARIES} ${OpenCV_LIBS}
  )
  
 target_link_libraries(infocontroller
-   ${catkin_LIBRARIES} ${OpenCV_LIBRARIES}
+   ${catkin_LIBRARIES} ${OpenCV_LIBS}
  )
 
 target_link_libraries(tf2posestamped
-   ${catkin_LIBRARIES} ${OpenCV_LIBRARIES}
+   ${catkin_LIBRARIES} ${OpenCV_LIBS}
  )
  
 target_link_libraries(ros2matlab
-   ${catkin_LIBRARIES} ${OpenCV_LIBRARIES}
+   ${catkin_LIBRARIES} ${OpenCV_LIBS}
  )
  
 target_link_libraries(xml2octave
-   ${catkin_LIBRARIES} ${OpenCV_LIBRARIES}
+   ${catkin_LIBRARIES} ${OpenCV_LIBS}
  )
 
 target_link_libraries(drone_waypoint_nav
-   ${catkin_LIBRARIES} ${OpenCV_LIBRARIES}
+   ${catkin_LIBRARIES} ${OpenCV_LIBS}
  )
 #############
 ## Install ##

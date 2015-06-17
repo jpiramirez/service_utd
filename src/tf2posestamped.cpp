@@ -30,6 +30,8 @@ int main(int argc, char** argv){
     ps.header.seq = seq;
     ps.header.stamp = ros::Time::now();
     ps.header.frame_id = "world";
+    // The frame downward_cam_link is rotated wrt the base_link, hence the
+    // correction below
     ps.pose.position.x = transform.getOrigin().x();
     ps.pose.position.y = transform.getOrigin().y();
     ps.pose.position.z = transform.getOrigin().z();
