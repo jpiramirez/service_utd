@@ -127,7 +127,7 @@ public:
     xcoords.create(nsqy, nsqx, CV_32F);
     ycoords.create(nsqy, nsqx, CV_32F);
 
-    timer = nh_.createTimer(ros::Duration(0.1), &infoController::computeWaypoint, this);
+    timer = nh_.createTimer(ros::Duration(0.2), &infoController::computeWaypoint, this);
 
     namedWindow("pdf");
 
@@ -302,7 +302,7 @@ public:
       {
           wp_msg.x = targetPosition.position.x+x;
           wp_msg.y = targetPosition.position.y+y;
-          wp_msg.z = 0.5;
+          wp_msg.z = 1;
           waypoint_pub.publish(wp_msg);
           return;
       }

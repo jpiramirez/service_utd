@@ -52,7 +52,7 @@ public:
     pz = 0;
     setx = 0;
     sety = 0;
-    setz = 0.5;
+    setz = 1;
     errx = 0;
     erry = 0;
     errz = 0;
@@ -237,10 +237,10 @@ public:
 //          cout << xeh[i] << " ";
 //      cout << endl;
 
-      errx = xsum/float(HORIZON) - setx;
-      erry = ysum/float(HORIZON) - sety;
-      errz = zsum/float(HORIZON) - setz;
-      angle = asum/float(HORIZON);
+      //errx = xsum/float(HORIZON) - setx;
+      //erry = ysum/float(HORIZON) - sety;
+      //errz = zsum/float(HORIZON) - setz;
+      //angle = asum/float(HORIZON);
 
       float cx, cy;
       //if(fabs(angle) < 1e-2)
@@ -251,11 +251,23 @@ public:
       errz = (z - setz)/(n+1) + n*perrz/(n+1);
       ah = angle/(n+1) + n*pah/(n+1);
 
-      cx = -KPx*errx - KDx*(errx-perrx)/t;
-      cy = -KPy*erry - KDy*(erry-perry)/t;
+      errx = x - setx;
+      erry = y - sety;
+      errz = z - setz;
+      ah = angle;
+
+      //cx = -KPx*errx - KDx*(errx-perrx)/t;
+      //cy = -KPy*erry - KDy*(erry-perry)/t;
+      //control.linear.z = -KPz*errz - KDz*(errz-perrz)/t;
+
+      errx = setx - x;
+      erry = sety - y;
+      errz = setz - z;
+      cx = KPx*errx + KDx*(errx-perrx)/t;
+      cy = KPy*erry + KDy*(erry-perry)/t;
       control.linear.x = cos(ah)*cx + sin(ah)*cy;
       control.linear.y = -sin(ah)*cx + cos(ah)*cy;
-      control.linear.z = -KPz*errz - KDz*(errz-perrz)/t;
+      control.linear.z = KPz*errz + KDz*(errz-perrz)/t;
 
 //      control.linear.x = errx;
 //      control.linear.y = erry;

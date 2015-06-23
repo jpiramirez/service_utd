@@ -136,6 +136,7 @@ add_executable(infocontroller src/infocontroller.cpp src/targetstateestimator.cp
 add_executable(ros2matlab src/ros2matlab.cpp)
 add_executable(xml2octave src/xml2octave.cpp)
 add_executable(drone_waypoint_nav src/drone_waypoint_nav src/targetstateestimator.cpp)
+add_executable(traindetector src/traindetector.cpp)
 
 ## Add cmake target dependencies of the executable/library
 ## as an example, message headers may need to be generated before nodes
@@ -193,6 +194,10 @@ target_link_libraries(xml2octave
  )
 
 target_link_libraries(drone_waypoint_nav
+   ${catkin_LIBRARIES} ${OpenCV_LIBS}
+ )
+
+target_link_libraries(traindetector
    ${catkin_LIBRARIES} ${OpenCV_LIBS}
  )
 #############

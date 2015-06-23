@@ -1,0 +1,8 @@
+<?xml version="1.0"?>
+
+<launch> 
+  <param name="/waypoints/y" value="-1 1 1 -1 -1 1" />
+  <param name="/waypoints/x" value="1 1 0 0 -1 -1" />
+  <param name="/waypoints/z" value="1 1 1 1 1 1" />
+  <node name="drone_waypoint_nav" pkg="service_utd" type="drone_waypoint_nav" respawn="true" />
+</launch>
