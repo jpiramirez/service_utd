@@ -37,6 +37,7 @@ public:
 	~targetStateEstimator();
     void predictGrid();
 	void updateGrid(Rect &area, bool measurement);
+    void updateGridGaussian(Point mean, Mat &cov, bool measurement);
 	Mat getGrid();
 	void  MLE();
 };

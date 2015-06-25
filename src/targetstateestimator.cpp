@@ -108,6 +108,67 @@ void targetStateEstimator::updateGrid(Rect &area, bool measurement)
     }
 }
 
+// Here the mean and covariance are in PIXELS
+void targetStateEstimator::updateGridGaussian(Point mean, Mat &cov, bool measurement)
+{
+    Mat mask, fov;
+    mask = Mat::zeros(occgrid.rows, occgrid.cols, CV_32F);
+    Mat mvec(2, 1, CV_32F);
+
+    int i, j;
+    Mat icov = cov.inv();
+    Mat value(1, 1, CV_32F);
+
+    double K = 1.0/(sqrt(determinant(cov))*2.0*M_PI);
+
+    for(i=0; i < mask.rows; i++)
+    {
+        for(j=0; j < mask.cols; j++)
+        {
+            mvec.at<float>(0) = j-mean.x;
+            mvec.at<float>(1) = i-mean.y;
+            value = mvec.t()*icov*mvec;
+            mask.at<float>(i, j) = K*exp(-0.5*(value.at<float>(0, 0)));
+        }
+    }
+
+
+    occgrid = occgrid.mul(mask);
+    float factor = sum(occgrid)[0];
+    //cout << "Factor: " << factor << endl;
+    if(factor > 1e-100)
+        occgrid = occgrid*(1.0/factor);
+    else
+    {
+        cout << "The target is not in the search area" << endl;
+        occgrid = Scalar(1/float(occgrid.rows*occgrid.cols));
+    }
+
+    // Floating point arithmetic requires a threshold!
+//    for(int i=0; i < occgrid.rows; i++)
+//    {
+//        for(int j=0; j < occgrid.cols; j++)
+//        {
+//            if(occgrid.at<float>(i,j) < 1e-9)
+//                occgrid.at<float>(i,j) = 0.0;
+//        }
+//    }
+//    float factor = sum(occgrid)[0];
+//    occgrid = occgrid*(1.0/factor);
+
+    // What follows is an attempt to deal with zero-entropy grids
+    double max;
+    minMaxLoc(occgrid, NULL, &max);
+    if(fabs(max - 1) < 1e-6)
+    {
+        cout << "Singleton grid estimate reached, smoothing" << endl;
+        Mat newgrid = occgrid.clone();
+        GaussianBlur(occgrid, newgrid, Size(5, 5), 0, 0, BORDER_CONSTANT);
+        factor = sum(newgrid)[0];
+        occgrid = newgrid*(1.0/factor);
+    }
+}
+
 Mat targetStateEstimator::getGrid()
 {
     return occgrid;

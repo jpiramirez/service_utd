@@ -11,12 +11,16 @@
 #include <std_msgs/Bool.h>
 #include <cv_bridge/cv_bridge.h>
 #include <sensor_msgs/image_encodings.h>
+#include <geometry_msgs/Pose.h>
+#include <opencv2/opencv.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/highgui/highgui.hpp>
+#include <opencv2/features2d/features2d.hpp>
 #include <camera_calibration_parsers/parse.h>
-#include "colortarget.h"
 
 namespace enc = sensor_msgs::image_encodings;
+using namespace cv;
+using namespace std;
 
 static const char WINDOW[] = "Image window";
 
@@ -29,8 +33,15 @@ class ImageConverter
   image_transport::Subscriber image_sub_;
   image_transport::Publisher image_pub_;
   ros::Subscriber caminfo_sub;
-  colortarget vt;
 
+  Vec3i color;
+
+  SimpleBlobDetector *detector;
+  SimpleBlobDetector::Params params;
+  vector<KeyPoint> keypoints;
+
+  double tgtSize;
+  Mat calibMatrix;
   
 public:
   ImageConverter()
@@ -40,20 +51,21 @@ public:
     image_sub_ = it_.subscribe("image", 1, &ImageConverter::imageCb, this);
     pose_pub = nh_.advertise<std_msgs::Bool>("/objectdetected", 2);
     tgtpose_pub = nh_.advertise<geometry_msgs::Pose>("/objectpose", 1);
-    nh_.param("/vispose/targetsize", vt.tgtSize, 0.1);
-    ROS_INFO_STREAM("Target size is " << vt.tgtSize);
+    nh_.param("/targetdetect/targetsize", tgtSize, 0.1);
+    ROS_INFO_STREAM("Target size is " << tgtSize);
 
     std::string calibfile;
-    nh_.param<std::string>("/vispose/camera_info_url", calibfile, "calibration.yml");
+    nh_.param<std::string>("/targetdetect/camera_info_url", calibfile, "calibration.yml");
 	std::string colordef;
-	nh_.param<std::string>("/vispose/color", colordef, "0 71 213");
+    nh_.param<std::string>("/targetdetect/color", colordef, "0 71 213");
 	std::stringstream ss(colordef);
-	ss >> vt.color.val[0];
-	ss >> vt.color.val[1];
-	ss >> vt.color.val[2];
+    ss >> color[0];
+    ss >> color[1];
+    ss >> color[2];
+
 	
-	ROS_INFO_STREAM("Using color " << vt.color.val[0] << " " << \
-	                vt.color.val[1] << " " << vt.color.val[2]);
+    ROS_INFO_STREAM("Using color " << color[0] << " " << \
+                    color[1] << " " << color[2]);
 	
     std::string camname;
     sensor_msgs::CameraInfo caminfo;
@@ -63,20 +75,38 @@ public:
     
     // There was a way to do the following assignments in a more compact manner
     // but I just can't remember
-    vt.calibMatrix.at<double>(0,0) = caminfo.K[0];
-    vt.calibMatrix.at<double>(0,1) = caminfo.K[1];
-    vt.calibMatrix.at<double>(0,2) = caminfo.K[2];
-    vt.calibMatrix.at<double>(1,0) = caminfo.K[3];
-    vt.calibMatrix.at<double>(1,1) = caminfo.K[4];
-    vt.calibMatrix.at<double>(1,2) = caminfo.K[5];
-    vt.calibMatrix.at<double>(2,0) = caminfo.K[6];
-    vt.calibMatrix.at<double>(2,1) = caminfo.K[7];
-    vt.calibMatrix.at<double>(2,2) = caminfo.K[8];
+    calibMatrix.create(3, 3, CV_64FC1);
+    calibMatrix.at<double>(0,0) = caminfo.K[0];
+    calibMatrix.at<double>(0,1) = caminfo.K[1];
+    calibMatrix.at<double>(0,2) = caminfo.K[2];
+    calibMatrix.at<double>(1,0) = caminfo.K[3];
+    calibMatrix.at<double>(1,1) = caminfo.K[4];
+    calibMatrix.at<double>(1,2) = caminfo.K[5];
+    calibMatrix.at<double>(2,0) = caminfo.K[6];
+    calibMatrix.at<double>(2,1) = caminfo.K[7];
+    calibMatrix.at<double>(2,2) = caminfo.K[8];
 
-    for(int i=0; i < 5; i++)
-	vt.distCoeff.push_back(caminfo.D[i]);
+    ROS_INFO_STREAM("Calibration matrix: " << calibMatrix);
 
-    ROS_INFO_STREAM("Calibration matrix: " << vt.calibMatrix);
+
+    params.filterByCircularity = true;
+    params.minCircularity = 0.1;
+    params.maxCircularity = 1.0;
+    params.filterByArea = true;
+    params.minArea = 500;
+    params.maxArea = 640*480;
+    params.filterByInertia = false;
+    params.minInertiaRatio = 0.8;
+    params.filterByColor = false;
+    params.blobColor = 255;
+    params.filterByConvexity = false;
+    params.minThreshold = 250;
+    params.maxThreshold = 255;
+    params.thresholdStep = 1;
+    params.minRepeatability = 3;
+    params.minDistBetweenBlobs = 100;
+
+    detector = new SimpleBlobDetector(params);
 
   }
 
@@ -86,6 +116,8 @@ public:
 
   void imageCb(const sensor_msgs::ImageConstPtr& msg)
   {
+    int i, j;
+
     cv_bridge::CvImagePtr cv_ptr;
     try
     {
@@ -98,31 +130,78 @@ public:
     }
 
 	Mat fimage;
-	cv_ptr->image.convertTo(fimage, CV_32FC3);
-    vt.computeStateWithColorBlob(fimage);
- 	cv::circle(cv_ptr->image, vt.tgtLoc, 3, CV_RGB(255,0,0));
-    cv::rectangle(cv_ptr->image, vt.tgtRect, CV_RGB(0,255,0), 3);
+    cv_ptr->image.convertTo(fimage, CV_8UC3);
+    Mat grayscale(fimage.rows, fimage.cols, CV_8UC1);
+    //vt.computeStateWithColorBlob(fimage);
+    //cv::circle(cv_ptr->image, vt.tgtLoc, 3, CV_RGB(255,0,0));
+    //cv::rectangle(cv_ptr->image, vt.tgtRect, CV_RGB(0,255,0), 3);
 
     geometry_msgs::Pose tgtPose;
     std_msgs::Bool tfound;
+    double colorDist;
 
-    if(vt.targetFound())
+    for(i=0; i < fimage.rows; i++)
+        for(j=0; j < fimage.cols; j++)
+        {
+            colorDist = 0.0;
+            for(int k=0; k < 3; k++)
+                colorDist += pow(fimage.at<Vec3b>(i,j)[k]-color[k], 2.0f);
+            colorDist = sqrt(colorDist);
+            if(colorDist < 200)
+                grayscale.at<uchar>(i,j) = 255;
+            else
+                grayscale.at<uchar>(i,j) = 0;
+        }
+
+    //Mat grayscale(fimage.rows, fimage.cols, CV_8UC1);
+    //cvtColor(fimage, grayscale, CV_RGB2GRAY);
+    //grayscale.convertTo(grayscale, CV_8UC1);
+    //grayscale.convertTo(cv_ptr->image, CV_8UC3);
+    cvtColor(grayscale, cv_ptr->image, CV_GRAY2BGR);
+
+    keypoints.clear();
+    detector->detect(grayscale, keypoints);
+    if(keypoints.size() == 0)
+        cout << "No blobs detected" << endl;
+    else
+        cout << "Blobs detected" << keypoints.size() << endl;
+
+    Point pt;
+    for(int i=0; i < keypoints.size(); i++)
+    {
+        pt.x = keypoints[i].pt.x;
+        pt.y = keypoints[i].pt.y;
+        cv::circle(cv_ptr->image, pt, 20, CV_RGB(0,255,0), -1);
+    }
+
+    //drawKeypoints(grayscale, keypoints, cv_ptr->image, CV_RGB(255, 0, 0));
+
+    bool targetFound = false;
+    if(keypoints.size() > 0)
+        targetFound = true;
+
+    double f = calibMatrix.at<double>(0, 0);
+    if(targetFound)
     {
         // The target position is being given relative to the drone pose
-        tgtPose.position.y = vt.position.val[0];
-        tgtPose.position.x = vt.position.val[1];
-        tgtPose.position.z = vt.position.val[2];
+
+        tgtPose.position.z = tgtSize*f/(2.0*keypoints[0].size);
+        tgtPose.position.x = -(pt.y - fimage.rows/2.0)/f;
+        tgtPose.position.y = -(pt.x - fimage.cols/2.0)/f;
+        tgtPose.position.x *= tgtPose.position.z;
+        tgtPose.position.y *= tgtPose.position.z;
+        cout << keypoints[0].size << endl;
     
-        tgtPose.orientation.w = vt.orientation.val[0];
-        tgtPose.orientation.x = vt.orientation.val[1];
-        tgtPose.orientation.y = vt.orientation.val[2];
-        tgtPose.orientation.z = vt.orientation.val[3];
+        tgtPose.orientation.w = 1;
+        tgtPose.orientation.x = 0;
+        tgtPose.orientation.y = 0;
+        tgtPose.orientation.z = 0;
 
         tfound.data = true;
         tgtpose_pub.publish(tgtPose);
     }
     else
-	tfound.data = false;
+        tfound.data = false;
       
     pose_pub.publish(tfound);
     

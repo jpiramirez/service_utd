@@ -56,6 +56,8 @@ class infoController
   Mat xcoords;
   Mat ycoords;
   double Copt;
+  vector<double> wpx, wpy, wpz;
+  int wpcount;
   vector<float> xh, yh, zh;
   float alpha, beta;
   bool detected;
@@ -63,6 +65,8 @@ class infoController
   bool targetFound;
   double confThresh;
   double detectConfidence;
+
+  bool waypointNav;
   
 public:
   infoController()
@@ -92,14 +96,14 @@ public:
     setz = 1.4;
     ptime = ros::Time::now();
     ctime = ros::Time::now();
-    gridsizex = 3;
-    gridsizey = 2;
+    gridsizex = 4;
+    gridsizey = 4;
     squaresize = 0.05;
     nsqx = floor(gridsizex/squaresize);
     nsqy = floor(gridsizey/squaresize);
     alpha = 0.8;
     beta = 0.2;
-    tse = new targetStateEstimator(nsqy, nsqx, 0.8, 0.2, squaresize, squaresize, 0.5);
+    tse = new targetStateEstimator(nsqy, nsqx, 0.8, 0.2, squaresize, squaresize, 0.2);
     //tse = new targetStateEstimator(nsqy, nsqx, 0.8, 0.2, squaresize, squaresize);
 
     ROS_INFO_STREAM("PDF grid is " << nsqy << "x" << nsqx);
@@ -136,6 +140,39 @@ public:
     detectConfidence = 0;
 
     detected = false;
+
+    nh_.param("/waypointNav", waypointNav, false);
+
+    if(waypointNav)
+    {
+        ROS_INFO_STREAM("Loading waypoint list");
+        std::string xpts;
+        nh_.param<std::string>("/waypoints/x", xpts, "0 1 1 0");
+        std::string ypts;
+        nh_.param<std::string>("/waypoints/y", ypts, "0 0 1 1");
+        std::string zpts;
+        nh_.param<std::string>("/waypoints/z", zpts, "1 1 1 1");
+        std::stringstream ssx(xpts);
+        std::stringstream ssy(ypts);
+        std::stringstream ssz(zpts);
+
+        double td;
+        while(!ssx.eof())
+        {
+          ssx >> td;
+          wpx.push_back(td);
+          ssy >> td;
+          wpy.push_back(td);
+          ssz >> td;
+          wpz.push_back(td);
+        }
+
+        wpcount = 0;
+        wp_msg.x = (double)wpx[0];
+        wp_msg.y = (double)wpy[0];
+        wp_msg.z = (double)wpz[0];
+    }
+
   }
 
   ~infoController()
@@ -171,6 +208,26 @@ public:
       px = xsum/(xh.size());
       py = ysum/(yh.size());
       pz = zsum/(zh.size());
+
+      if(waypointNav)
+      {
+          double dist = 0;
+          dist += (x-wpx[wpcount])*(x-wpx[wpcount]);
+          dist += (y-wpy[wpcount])*(y-wpy[wpcount]);
+          dist += (z-wpz[wpcount])*(z-wpz[wpcount]);
+          dist = sqrt(dist);
+
+          if(dist < 0.1)
+          {
+              wpcount++;
+              wpcount = wpcount % wpx.size();
+              ROS_INFO_STREAM("Heading towards waypoint " << wpcount);
+              wp_msg.x = wpx[wpcount];
+              wp_msg.y = wpy[wpcount];
+              wp_msg.z = wpz[wpcount];
+              waypoint_pub.publish(wp_msg);
+          }
+      }
   }
   
   void detectionCallback(const std_msgs::Bool::ConstPtr& msg)
@@ -200,7 +257,16 @@ public:
       area.height = floor(xp/squaresize);
 
       tse->predictGrid();
-      tse->updateGrid(area, detected);
+      if(targetFound)
+      {
+          Point meanp;
+          meanp.x = -(targetPosition.position.y+y)*nsqx/(float)gridsizex + nsqx/2;
+          meanp.y = -(targetPosition.position.x+x)*nsqy/(float)gridsizey + nsqy/2;
+          Mat cov = 3*Mat::eye(Size(2,2), CV_32F);
+          tse->updateGridGaussian(meanp, cov, true);
+      }
+      else
+          tse->updateGrid(area, detected);
       tse->MLE();
       //cout << "Mean: " << tse->mean*(-2.0/float(nsqx))+Vec2f(1,1) << endl;
       //cout << "StdDev: " << tse->std*(-2.0/float(nsqx))+Vec2f(1,1) << endl;
@@ -222,15 +288,21 @@ public:
       }
 
       // Visualizing the pdf
-//      double minval, maxval;
-//      minMaxLoc(data, &minval, &maxval);
-//      data = (255.0/maxval)*data;
-//      Mat probim = Mat::zeros(data.cols, data.rows, CV_8UC3);
-//      Mat tempim = Mat::zeros(data.cols, data.rows, CV_8UC1);
-//      data.convertTo(tempim, CV_8UC1);
-//      cvtColor(tempim, probim, CV_GRAY2BGR);
-//      imshow("pdf", probim);
-//      waitKey(3);
+      if(targetFound)
+      {
+          double minval, maxval;
+          minMaxLoc(data, &minval, &maxval);
+          data = (255.0/maxval)*data;
+          Mat probim = Mat::zeros(data.cols, data.rows, CV_8UC3);
+          Mat tempim = Mat::zeros(data.cols, data.rows, CV_8UC1);
+          int sfactor = 10;
+          Mat visimagesc(data.rows*sfactor, data.cols*sfactor, CV_8UC3);
+          data.convertTo(tempim, CV_8UC1);
+          cvtColor(tempim, probim, CV_GRAY2BGR);
+          resize(probim, visimagesc, visimagesc.size());
+          imshow("pdf", visimagesc);
+          waitKey(3);
+      }
 
       map_pub.publish(pm_msg);
 
@@ -307,6 +379,7 @@ public:
           return;
       }
 
+
       Mat probvol = cv::abs(result - Copt);
       // We will now attempt to give more weight to the grid locations closer to the sensor.
 
@@ -369,11 +442,14 @@ public:
       // Converting grid coordinates to world coordinates
       //wp_msg.x = -squaresize*minloc.y + gridsizey/2.0;
       //wp_msg.y = -squaresize*minloc.x + gridsizex/2.0;
-      wp_msg.x = xcoords.at<float>(minloc.y, minloc.x)+x;
-      wp_msg.y = ycoords.at<float>(minloc.y, minloc.x)+y;
-      wp_msg.z = 0.5;
-      cout << "[" << wp_msg.x << "," << wp_msg.y << "]" << endl;
-      cout << "Val: " << probvol.at<float>(minloc.y, minloc.x) << endl;
+      if(waypointNav == false)
+      {
+          wp_msg.x = xcoords.at<float>(minloc.y, minloc.x)+x;
+          wp_msg.y = ycoords.at<float>(minloc.y, minloc.x)+y;
+          wp_msg.z = 1;
+          cout << "[" << wp_msg.x << "," << wp_msg.y << "]" << endl;
+          cout << "Val: " << probvol.at<float>(minloc.y, minloc.x) << endl;
+      }
       waypoint_pub.publish(wp_msg);
 
       sm_msg.data.clear();

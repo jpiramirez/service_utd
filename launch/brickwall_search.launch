@@ -1,8 +1,15 @@
 <?xml version="1.0"?>
 
+<!-- xh = 0.2571, yh = 0.4571 -->
+<!-- x = [-1.5000   -0.9857   -0.4714    0.0429    0.5571    1.0714] -->
+<!-- y = [-2.0000   -1.0857   -0.1714    0.7429    1.6571] -->
+
 <launch> 
-  <param name="/waypoints/y" value="-1 1 1 -1 -1 1" />
-  <param name="/waypoints/x" value="1 1 0 0 -1 -1" />
-  <param name="/waypoints/z" value="1 1 1 1 1 1" />
-  <node name="drone_waypoint_nav" pkg="service_utd" type="drone_waypoint_nav" respawn="true" />
+  <param name="/waypointNav" value="true" type="bool" />
+  <!--param name="/waypoints/y" value="-1 1 1 -1 -1 1" /-->
+  <param name="/waypoints/y" value="-1.5429 1.5429 1.5429 -1.5429 -1.5429 1.5429 1.5429 -1.5429 -1.5429 1.5429 1.5429 -1.5429 -1.5429 1.5429 1.5429 -1.5429" />
+  <!-- param name="/waypoints/x" value="1 1 0 0 -1 -1" / -->
+  <param name="/waypoints/x" value="-1.7429 -1.7429  -1.2287 -1.2287  -0.7145 -0.7145  -0.2003 -0.2003   0.3139 0.3139   0.8281  0.8281  1.3423 1.3423   1.8565 1.8565"  />
+  <param name="/waypoints/z" value="1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 " />
+  <node name="drone_waypoint_nav" pkg="service_utd" type="infocontroller" respawn="true" />
 </launch>

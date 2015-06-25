@@ -127,7 +127,7 @@ include_directories(
 ## Declare a cpp executable
 add_executable(vispose src/vispose.cpp src/vistarget.cpp)
 add_executable(colorpose src/colorpose.cpp src/colortarget.cpp)
-add_executable(targetdetector src/targetdetector.cpp src/detecttarget.cpp)
+add_executable(targetdetector src/targetdetector.cpp)
 add_executable(unittest src/unittest.cpp src/targetstateestimator.cpp)
 add_executable(drone_odom src/drone_odom.cpp)
 add_executable(drone_setpoint src/drone_setpoint.cpp)
