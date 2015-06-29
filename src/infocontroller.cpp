@@ -59,7 +59,7 @@ class infoController
   vector<double> wpx, wpy, wpz;
   int wpcount;
   vector<float> xh, yh, zh;
-  float alpha, beta;
+  double alpha, beta;
   bool detected;
 
   bool targetFound;
@@ -101,10 +101,11 @@ public:
     squaresize = 0.05;
     nsqx = floor(gridsizex/squaresize);
     nsqy = floor(gridsizey/squaresize);
-    alpha = 0.8;
-    beta = 0.2;
+    nh_.param<double>("/alpha", alpha, 0.8);
+    nh_.param<double>("/beta", beta, 0.2);
     tse = new targetStateEstimator(nsqy, nsqx, 0.8, 0.2, squaresize, squaresize, 0.2);
     //tse = new targetStateEstimator(nsqy, nsqx, 0.8, 0.2, squaresize, squaresize);
+    cout << "No diffusion added" << endl;
 
     ROS_INFO_STREAM("PDF grid is " << nsqy << "x" << nsqx);
 
@@ -449,6 +450,12 @@ public:
           wp_msg.z = 1;
           cout << "[" << wp_msg.x << "," << wp_msg.y << "]" << endl;
           cout << "Val: " << probvol.at<float>(minloc.y, minloc.x) << endl;
+      }
+      else
+      {
+          wp_msg.x = wpx[wpcount];
+          wp_msg.y = wpy[wpcount];
+          wp_msg.z = wpz[wpcount];
       }
       waypoint_pub.publish(wp_msg);
 

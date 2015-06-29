@@ -180,8 +180,8 @@ public:
       d = ctime - ptime;
       double t = d.toSec();
 
-      if(t < 0.02)
-          return;
+     // if(t < 0.02)
+      //    return;
 
       x = msg->pose.position.x;
       y = msg->pose.position.y;
@@ -192,13 +192,13 @@ public:
       // front    back    left    right
 
       //odom = msg;
-      float KPx = 0.1;
-      float KPy = 0.1;
-      float KPz = 0.2;
+      float KPx = 0.4; //defaults 0.1 0.1 0.2 0.2 0.2 0.4
+      float KPy = 0.4;
+      float KPz = 0.6;
 
-      float KDx = 0.2;
-      float KDy = 0.2;
-      float KDz = 0.4;
+      float KDx = 0.4;
+      float KDy = 0.4;
+      float KDz = 0.6;
 
       float Ky = 2;
 

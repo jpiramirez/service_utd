@@ -10,7 +10,7 @@
       <uri>model://ground_plane</uri>
     </include>
     <model name='unit_sphere_1'>
-      <pose>0 -0.3 0.05 0 -0 0</pose>
+      <pose>0 -3 0 0 -0 0</pose>
       <link name='link'>
         <inertial>
           <mass>1</mass>
