@@ -22,5 +22,7 @@
   <param name="/waypoints/y" value="1.5 1.5 0 0 -1.5 -1.5" />
   <param name="/waypoints/z" value="2 2 2 2 2 2" />
   <param name="/waypointNav" value="false" type="bool" />
+  <param name="/alpha" value="0.95" />
+  <param name="/beta" value="0.01" />
   <node name="infocontroller" pkg="service_utd" type="infocontroller" respawn="true" output="screen"/>
 </launch>

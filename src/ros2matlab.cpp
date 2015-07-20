@@ -30,7 +30,7 @@ class ros2matlab
   ros::NodeHandle nh_;
   ros::Subscriber map_sub;
   ros::Subscriber searchmap_sub;
-  ros::Subscriber pose_sub, tgtpose_sub;
+  ros::Subscriber pose_sub, tgtpose_sub, tgtdetect_sub;
   ros::Subscriber object_sub;
   geometry_msgs::Vector3 wp_msg;
   service_utd::ProbMap pm_msg;
@@ -45,6 +45,7 @@ class ros2matlab
   int seqnum, sseqnum;
   ofstream poses;
   ofstream sposes;
+  bool tgtDetectedFlag;
   
 public:
   ros2matlab()
@@ -53,6 +54,7 @@ public:
     searchmap_sub = nh_.subscribe<service_utd::ProbMap>("/searchmap", 2, &ros2matlab::searchmapCallback, this);
     pose_sub = nh_.subscribe("/ardrone/pose", 2, &ros2matlab::poseCallback, this);
     tgtpose_sub = nh_.subscribe("/target/pose", 2, &ros2matlab::tgtposeCallback, this);
+    tgtdetect_sub = nh_.subscribe("/objectdetected", 1, &ros2matlab::tgtdetectCallback, this);
     ROS_INFO_STREAM("Translating ROS messages into a parseable Matlab file");
     seqnum = 0;
     sseqnum = 0;
@@ -62,6 +64,7 @@ public:
     tx = 0;
     ty = 0;
     tz = 0;
+    tgtDetectedFlag = false;
     poses.open("poses.txt", ios::out);
     sposes.open("searchposes.txt", ios::out);
   }
@@ -84,6 +87,11 @@ public:
       tx = msg->pose.position.x;
       ty = msg->pose.position.y;
       tz = msg->pose.position.z;
+  }
+
+  void tgtdetectCallback(const std_msgs::Bool::ConstPtr& msg)
+  {
+      tgtDetectedFlag = msg->data;
   }
   
   void mapCallback(const service_utd::ProbMap::ConstPtr& msg)
@@ -113,7 +121,12 @@ public:
       poses << ctime.sec;
       poses << setfill('0') << setw(9) << ctime.nsec;
       poses << "," << seqnum << "," << x << "," << y << "," << z;
-      poses << "," << tx << "," << ty << "," << tz << endl;
+      poses << "," << tx << "," << ty << "," << tz << ",";
+      if(tgtDetectedFlag)
+          poses << 1;
+      else
+          poses << 0;
+      poses << endl;
 
       seqnum++;
   }
@@ -145,7 +158,12 @@ public:
       sposes << ctime.sec;
       sposes << setfill('0') << setw(9) << ctime.nsec;
       sposes << "," << sseqnum << "," << x << "," << y << "," << z;
-      sposes << "," << tx << "," << ty << "," << tz << endl;
+      sposes << "," << tx << "," << ty << "," << tz << ",";
+      if(tgtDetectedFlag)
+          sposes << 1;
+      else
+          sposes << 0;
+      sposes << endl;
 
       sseqnum++;
   }

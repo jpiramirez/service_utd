@@ -77,7 +77,7 @@ public:
         for(int i=0; i < altitudes.size(); i++)
         {
             if(totalD[i] > 0)
-                ofile << altitudes[i] << " " << posD[i]/totalD[i] << " " << negD[i]/totalD[i] << endl;
+                ofile << altitudes[i] << " " << (double)posD[i]/(double)totalD[i] << " " << (double)negD[i]/(double)totalD[i] << endl;
             else
                 ofile << altitudes[i] << " " << 0.0 << " " << 0.0 << endl;
         }
@@ -93,6 +93,7 @@ public:
     void Callback(const geometry_msgs::PoseStamped::ConstPtr& msg)
     {
         droneA = msg->pose.position.z;
+        droneA = 1;
     }
 
     void detectionCallback(const std_msgs::Bool::ConstPtr& msg)

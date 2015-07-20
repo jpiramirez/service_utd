@@ -192,9 +192,9 @@ public:
       // front    back    left    right
 
       //odom = msg;
-      float KPx = 0.4; //defaults 0.1 0.1 0.2 0.2 0.2 0.4
-      float KPy = 0.4;
-      float KPz = 0.6;
+      float KPx = 0.2; //defaults 0.1 0.1 0.2 0.2 0.2 0.4
+      float KPy = 0.2;
+      float KPz = 0.4;
 
       float KDx = 0.4;
       float KDy = 0.4;

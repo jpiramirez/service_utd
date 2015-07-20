@@ -103,7 +103,7 @@ public:
     nsqy = floor(gridsizey/squaresize);
     nh_.param<double>("/alpha", alpha, 0.8);
     nh_.param<double>("/beta", beta, 0.2);
-    tse = new targetStateEstimator(nsqy, nsqx, 0.8, 0.2, squaresize, squaresize, 0.2);
+    tse = new targetStateEstimator(nsqy, nsqx, 0.8, 0.2, squaresize, squaresize, 0.1);
     //tse = new targetStateEstimator(nsqy, nsqx, 0.8, 0.2, squaresize, squaresize);
     cout << "No diffusion added" << endl;
 
