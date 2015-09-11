@@ -1,0 +1,164 @@
+<?xml version="1.0"?>
+
+<launch>
+   <include file="$(find gazebo_ros)/launch/empty_world.launch"/>
+   <arg name="model" default="$(find service_utd)/urdf/quadrotor_downward_cam.gazebo.xacro"/>
+
+   <!-- workaround https://github.com/ros-simulation/gazebo_ros_pkgs/pull/134 -->
+   <!-- <param name="robot_description" command="$(find xacro)/xacro.py '$(arg model)'" /> -->
+
+   <group ns="uav1">
+	   <param name="worldframe" value="/world" />
+	   <param name="baselink" value="/uav1/base_link" />
+	 <param name="targetdetect/camera_info_url" value="$(find service_utd)/calibration.yml" />
+	   <param name="tf_prefix" value="uav1" />
+
+		<node name="drone_setpoint" pkg="service_utd" type="drone_setpoint" respawn="true" />
+  
+		<node name="tf2posestamped" pkg="service_utd" type="tf2posestamped" respawn="true" />
+
+		<param name="targetdetect/color" value="0 0 255" type="str" />  
+		<node name="targetdetector" pkg="service_utd" type="targetdetector" respawn="true" >
+			<remap from="image" to="downward_cam/camera/image" />
+		</node>
+  
+		<param name="waypoints/x" value="-2 2 2 -2 -2 2" />
+		<param name="waypoints/y" value="1.5 1.5 0 0 -1.5 -1.5" />
+		<param name="waypoints/z" value="2 2 2 2 2 2" />
+		<param name="waypointNav" value="false" type="bool" />
+		<param name="alpha" value="0.95" />
+		<param name="beta" value="0.01" />
+		<param name="detection_radius" value="2.0" />
+		<param name="collision_radius" value="1.0" />
+		<param name="mapname" value="$(find service_utd)/squaremap.yml" />
+		<rosparam param="UAVconnectivity">[2,3]</rosparam>
+		<node name="pathplanner" pkg="service_utd" type="pathplanner" respawn="true" output="screen"/>
+		
+		<param name="controller/twist/linear/xy/k_d" value="0.0" />
+		<param name="controller/twist/linear/xy/k_i" value="0.5" />
+		<param name="controller/twist/linear/xy/k_p" value="2.0" />
+     <include file="$(find hector_quadrotor_gazebo)/launch/spawn_quadrotor.launch">
+       <arg name="name" value="uav1" />
+       <arg name="tf_prefix" value="uav1" />
+       <arg name="model" value="$(arg model)" />
+       <arg name="x" value="2.0" />
+     </include>
+   </group>
+
+   <group ns="uav2">
+	   <param name="targetdetect/camera_info_url" value="$(find service_utd)/calibration.yml" />
+	   <param name="tf_prefix" value="uav2" />
+
+		<node name="drone_setpoint" pkg="service_utd" type="drone_setpoint" respawn="true" />
+  
+	   <param name="worldframe" value="/world" />
+	   <param name="baselink" value="/uav2/base_link" />
+		<node name="tf2posestamped" pkg="service_utd" type="tf2posestamped" respawn="true" />
+
+		<param name="targetdetect/color" value="0 0 255" type="str" />  
+		<node name="targetdetector" pkg="service_utd" type="targetdetector" respawn="true" >
+			<remap from="image" to="downward_cam/camera/image" />
+		</node>
+  
+		<param name="waypoints/x" value="-2 2 2 -2 -2 2" />
+		<param name="waypoints/y" value="1.5 1.5 0 0 -1.5 -1.5" />
+		<param name="waypoints/z" value="2 2 2 2 2 2" />
+		<param name="waypointNav" value="false" type="bool" />
+		<param name="alpha" value="0.95" />
+		<param name="beta" value="0.01" />
+		<param name="detection_radius" value="2.0" />
+		<param name="collision_radius" value="1.0" />
+		<param name="mapname" value="$(find service_utd)/squaremap.yml" />
+		<rosparam param="UAVconnectivity">[1,3]</rosparam>
+		<node name="pathplanner" pkg="service_utd" type="pathplanner" respawn="true" output="screen"/>
+		
+		<param name="controller/twist/linear/xy/k_d" value="0.0" />
+		<param name="controller/twist/linear/xy/k_i" value="0.5" />
+		<param name="controller/twist/linear/xy/k_p" value="2.0" />
+
+     <include file="$(find hector_quadrotor_gazebo)/launch/spawn_quadrotor.launch">
+       <arg name="name" value="uav2" />
+       <arg name="tf_prefix" value="uav2" />
+       <arg name="model" value="$(arg model)" />
+       <arg name="y" value="2.0" />
+     </include>
+   </group>
+   
+   <group ns="uav3">
+	   <param name="targetdetect/camera_info_url" value="$(find service_utd)/calibration.yml" />
+	   <param name="tf_prefix" value="uav3" />
+
+		<node name="drone_setpoint" pkg="service_utd" type="drone_setpoint" respawn="true" />
+  
+	   <param name="worldframe" value="/world" />
+	   <param name="baselink" value="/uav3/base_link" />
+		<node name="tf2posestamped" pkg="service_utd" type="tf2posestamped" respawn="true" />
+
+		<param name="targetdetect/color" value="0 0 255" type="str" />  
+		<node name="targetdetector" pkg="service_utd" type="targetdetector" respawn="true" >
+			<remap from="image" to="downward_cam/camera/image" />
+		</node>
+  
+		<param name="waypoints/x" value="-2 2 2 -2 -2 2" />
+		<param name="waypoints/y" value="1.5 1.5 0 0 -1.5 -1.5" />
+		<param name="waypoints/z" value="2 2 2 2 2 2" />
+		<param name="waypointNav" value="false" type="bool" />
+		<param name="alpha" value="0.95" />
+		<param name="beta" value="0.01" />
+		<param name="detection_radius" value="2.0" />
+		<param name="collision_radius" value="1.0" />
+		<param name="mapname" value="$(find service_utd)/squaremap.yml" />
+		<rosparam param="UAVconnectivity">[1,2]</rosparam>
+		<node name="pathplanner" pkg="service_utd" type="pathplanner" respawn="true" output="screen"/>
+		
+		<param name="controller/twist/linear/xy/k_d" value="0.0" />
+		<param name="controller/twist/linear/xy/k_i" value="0.5" />
+		<param name="controller/twist/linear/xy/k_p" value="2.0" />
+
+     <include file="$(find hector_quadrotor_gazebo)/launch/spawn_quadrotor.launch">
+       <arg name="name" value="uav3" />
+       <arg name="tf_prefix" value="uav3" />
+       <arg name="model" value="$(arg model)" />
+       <arg name="y" value="-2.0" />
+     </include>
+   </group>
+   
+   <!-- group ns="uav4">
+	   <param name="targetdetect/camera_info_url" value="$(find service_utd)/calibration.yml" />
+	   <param name="tf_prefix" value="uav4" />
+
+		<node name="drone_setpoint" pkg="service_utd" type="drone_setpoint" respawn="true" />
+  
+	   <param name="worldframe" value="/world" />
+	   <param name="baselink" value="/uav4/base_link" />
+		<node name="tf2posestamped" pkg="service_utd" type="tf2posestamped" respawn="true" />
+
+		<param name="targetdetect/color" value="0 0 255" type="str" />  
+		<node name="targetdetector" pkg="service_utd" type="targetdetector" respawn="true" >
+			<remap from="image" to="downward_cam/camera/image" />
+		</node>
+  
+		<param name="waypoints/x" value="-2 2 2 -2 -2 2" />
+		<param name="waypoints/y" value="1.5 1.5 0 0 -1.5 -1.5" />
+		<param name="waypoints/z" value="2 2 2 2 2 2" />
+		<param name="waypointNav" value="false" type="bool" />
+		<param name="alpha" value="0.95" />
+		<param name="beta" value="0.01" />
+		<param name="mapname" value="$(find service_utd)/squaremap.yml" />
+		<rosparam param="UAVconnectivity">[1,2,3]</rosparam>
+		<node name="pathplanner" pkg="service_utd" type="pathplanner" respawn="true" output="screen"/>
+		
+		<param name="controller/twist/linear/xy/k_d" value="0.0" />
+		<param name="controller/twist/linear/xy/k_i" value="0.5" />
+		<param name="controller/twist/linear/xy/k_p" value="2.0" />
+
+     <include file="$(find hector_quadrotor_gazebo)/launch/spawn_quadrotor.launch">
+       <arg name="name" value="uav4" />
+       <arg name="tf_prefix" value="uav4" />
+       <arg name="model" value="$(arg model)" />
+       <arg name="x" value="-2.0" />
+     </include>
+   </group -->
+
+</launch>
+

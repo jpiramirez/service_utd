@@ -21,6 +21,7 @@ find_package(catkin REQUIRED COMPONENTS
 
 find_package(OpenCV REQUIRED)
 find_package(Eigen REQUIRED)
+find_package(GSL REQUIRED)
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
@@ -67,6 +68,7 @@ add_message_files(
   Markers.msg
   TfDistortInfo.msg
   ProbMap.msg
+  ParticleSet.msg
 )
 
 ## Generate services in the 'srv' folder
@@ -128,7 +130,8 @@ include_directories(
 add_executable(vispose src/vispose.cpp src/vistarget.cpp)
 add_executable(colorpose src/colorpose.cpp src/colortarget.cpp)
 add_executable(targetdetector src/targetdetector.cpp)
-add_executable(unittest src/unittest.cpp src/targetstateestimator.cpp)
+add_executable(cardetector src/cardetector.cpp)
+add_executable(unittest src/unittest.cpp src/targetstateestimator.cpp src/particlefilter.cpp src/urbanmap.cpp)
 add_executable(drone_odom src/drone_odom.cpp)
 add_executable(drone_setpoint src/drone_setpoint.cpp)
 add_executable(tf2posestamped src/tf2posestamped.cpp)
@@ -137,12 +140,14 @@ add_executable(ros2matlab src/ros2matlab.cpp)
 add_executable(xml2octave src/xml2octave.cpp)
 add_executable(drone_waypoint_nav src/drone_waypoint_nav src/targetstateestimator.cpp)
 add_executable(traindetector src/traindetector.cpp)
+add_executable(pathplanner src/pathplanner.cpp src/particlefilter.cpp src/urbanmap.cpp)
 
 ## Add cmake target dependencies of the executable/library
 ## as an example, message headers may need to be generated before nodes
 add_dependencies(vispose service_utd_generate_messages_cpp)
 add_dependencies(colorpose service_utd_generate_messages_cpp)
 add_dependencies(targetdetector service_utd_generate_messages_cpp)
+add_dependencies(cardetector service_utd_generate_messages_cpp)
 add_dependencies(unittest service_utd_generate_messages_cpp)
 add_dependencies(drone_odom service_utd_generate_messages_cpp)
 add_dependencies(drone_setpoint service_utd_generate_messages_cpp)
@@ -151,6 +156,7 @@ add_dependencies(tf2posestamped service_utd_generate_messages_cpp)
 add_dependencies(ros2matlab service_utd_generate_messages_cpp)
 add_dependencies(xml2octave service_utd_generate_messages_cpp)
 add_dependencies(drone_waypoint_nav service_utd_generate_messages_cpp)
+add_dependencies(pathplanner service_utd_generate_messages_cpp)
 
 ## Specify libraries to link a library or executable target against
 target_link_libraries(vispose
@@ -164,9 +170,13 @@ target_link_libraries(colorpose
 target_link_libraries(targetdetector
    ${catkin_LIBRARIES} ${OpenCV_LIBS}
  )
+
+target_link_libraries(cardetector
+   ${catkin_LIBRARIES} ${OpenCV_LIBS}
+ )
  
 target_link_libraries(unittest
-   ${catkin_LIBRARIES} ${OpenCV_LIBS}
+   ${catkin_LIBRARIES} ${OpenCV_LIBS} ${GSL_LIBRARIES}
  )
 
 target_link_libraries(drone_odom
@@ -199,6 +209,10 @@ target_link_libraries(drone_waypoint_nav
 
 target_link_libraries(traindetector
    ${catkin_LIBRARIES} ${OpenCV_LIBS}
+ )
+
+target_link_libraries(pathplanner
+   ${catkin_LIBRARIES} ${OpenCV_LIBS} ${GSL_LIBRARIES}
  )
 #############
 ## Install ##

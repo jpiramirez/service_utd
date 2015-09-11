@@ -71,12 +71,12 @@ class infoController
 public:
   infoController()
   {
-    waypoint_pub = nh_.advertise<geometry_msgs::Vector3>("/ardrone/setpoint", 2);
-    map_pub = nh_.advertise<service_utd::ProbMap>("/probmap", 2);
-    searchmap_pub = nh_.advertise<service_utd::ProbMap>("/searchmap", 2);
-    pose_sub = nh_.subscribe("/ardrone/pose", 2, &infoController::Callback, this);
-    object_sub = nh_.subscribe("/objectdetected", 2, &infoController::detectionCallback, this);
-    tgtpose_sub = nh_.subscribe("/objectpose", 1, &infoController::targetPositionCallback, this);
+    waypoint_pub = nh_.advertise<geometry_msgs::Vector3>("ardrone/setpoint", 2);
+    map_pub = nh_.advertise<service_utd::ProbMap>("probmap", 2);
+    searchmap_pub = nh_.advertise<service_utd::ProbMap>("searchmap", 2);
+    pose_sub = nh_.subscribe("ardrone/pose", 2, &infoController::Callback, this);
+    object_sub = nh_.subscribe("objectdetected", 2, &infoController::detectionCallback, this);
+    tgtpose_sub = nh_.subscribe("objectpose", 1, &infoController::targetPositionCallback, this);
 
     ROS_INFO_STREAM("Set point controller initialized.");
     x = 0.0;
@@ -101,8 +101,8 @@ public:
     squaresize = 0.05;
     nsqx = floor(gridsizex/squaresize);
     nsqy = floor(gridsizey/squaresize);
-    nh_.param<double>("/alpha", alpha, 0.8);
-    nh_.param<double>("/beta", beta, 0.2);
+    nh_.param<double>("alpha", alpha, 0.8);
+    nh_.param<double>("beta", beta, 0.2);
     tse = new targetStateEstimator(nsqy, nsqx, 0.8, 0.2, squaresize, squaresize, 0.1);
     //tse = new targetStateEstimator(nsqy, nsqx, 0.8, 0.2, squaresize, squaresize);
     cout << "No diffusion added" << endl;
@@ -142,17 +142,17 @@ public:
 
     detected = false;
 
-    nh_.param("/waypointNav", waypointNav, false);
+    nh_.param("waypointNav", waypointNav, false);
 
     if(waypointNav)
     {
         ROS_INFO_STREAM("Loading waypoint list");
         std::string xpts;
-        nh_.param<std::string>("/waypoints/x", xpts, "0 1 1 0");
+        nh_.param<std::string>("waypoints/x", xpts, "0 1 1 0");
         std::string ypts;
-        nh_.param<std::string>("/waypoints/y", ypts, "0 0 1 1");
+        nh_.param<std::string>("waypoints/y", ypts, "0 0 1 1");
         std::string zpts;
-        nh_.param<std::string>("/waypoints/z", zpts, "1 1 1 1");
+        nh_.param<std::string>("waypoints/z", zpts, "1 1 1 1");
         std::stringstream ssx(xpts);
         std::stringstream ssy(ypts);
         std::stringstream ssz(zpts);

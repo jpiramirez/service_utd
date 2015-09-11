@@ -10,6 +10,11 @@ int main(int argc, char** argv){
   ros::Publisher pose =
     node.advertise<geometry_msgs::PoseStamped>("ardrone/pose", 10);
 
+  std::string worldframe;
+  std::string baselink;
+  node.param<std::string>("worldframe", worldframe, "/world");
+  node.param<std::string>("baselink", baselink, "base_link");
+
   tf::TransformListener listener;
 
   long int seq = 0;
@@ -18,7 +23,7 @@ int main(int argc, char** argv){
   while (node.ok()){
     tf::StampedTransform transform;
     try{
-      listener.lookupTransform("/world", "/base_link",
+      listener.lookupTransform(worldframe, baselink,
                                ros::Time(0), transform);
     }
     catch (tf::TransformException ex){
@@ -29,7 +34,7 @@ int main(int argc, char** argv){
     geometry_msgs::PoseStamped ps;
     ps.header.seq = seq;
     ps.header.stamp = ros::Time::now();
-    ps.header.frame_id = "world";
+    ps.header.frame_id = "/world";
     // The frame downward_cam_link is rotated wrt the base_link, hence the
     // correction below
     ps.pose.position.x = transform.getOrigin().x();

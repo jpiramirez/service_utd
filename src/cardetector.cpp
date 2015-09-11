@@ -1,4 +1,4 @@
-// Finding a target as a color blob
+// Finding a car in a scene
 //
 // Juan Pablo Ramirez <pablo.ramirez@utdallas.edu>
 // The University of Texas at Dallas
@@ -17,6 +17,7 @@
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/features2d/features2d.hpp>
 #include <camera_calibration_parsers/parse.h>
+#include "CarDetector.h"
 
 namespace enc = sensor_msgs::image_encodings;
 using namespace cv;
@@ -34,15 +35,14 @@ class ImageConverter
   image_transport::Publisher image_pub_;
   ros::Subscriber caminfo_sub;
 
-  Vec3i color;
+  Scalar color;
 
-  SimpleBlobDetector *detector;
-  SimpleBlobDetector::Params params;
-  vector<KeyPoint> keypoints;
+  CarDetector *cd;
 
   double tgtSize;
   Mat calibMatrix;
-  
+  bool targetFound;
+
 public:
   ImageConverter()
     : it_(nh_)
@@ -56,23 +56,33 @@ public:
 
     std::string calibfile;
     nh_.param<std::string>("targetdetect/camera_info_url", calibfile, "calibration.yml");
-	std::string colordef;
-    nh_.param<std::string>("targetdetect/color", colordef, "0 71 213");
-	std::stringstream ss(colordef);
+    std::string colordef;
+    nh_.param<std::string>("targetdetect/color", colordef, "0 255 0");
+    std::stringstream ss(colordef);
     ss >> color[0];
     ss >> color[1];
     ss >> color[2];
 
-	
+    Mat origcolor(1,1,CV_8UC3);
+    origcolor.at<Vec3b>(0,0)[0] = color[0];
+    origcolor.at<Vec3b>(0,0)[1] = color[1];
+    origcolor.at<Vec3b>(0,0)[2] = color[2];
+    Mat labcolor = origcolor.clone();
+
+    cvtColor(origcolor, labcolor, CV_BGR2Lab);
+    color = Scalar(labcolor.at<Vec3b>(0,0));
     ROS_INFO_STREAM("Using color " << color[0] << " " << \
                     color[1] << " " << color[2]);
-	
+    color = Scalar(105, 84, 165);
+
+
+
     std::string camname;
     sensor_msgs::CameraInfo caminfo;
 
     if(!camera_calibration_parsers::readCalibration(calibfile, camname, caminfo))
         exit(1);
-    
+
     // There was a way to do the following assignments in a more compact manner
     // but I just can't remember
     calibMatrix.create(3, 3, CV_64FC1);
@@ -88,26 +98,15 @@ public:
 
     ROS_INFO_STREAM("Calibration matrix: " << calibMatrix);
 
+    string cdVert;
+    nh_.param<std::string>("targetdetect/vertical_cascade", cdVert, "CascadeVertical.xml");
+    string cdHoriz;
+    nh_.param<std::string>("targetdetect/horizontal_cascade", cdHoriz, "CascadeHorizontal.xml");
+    string cdDiag;
+    nh_.param<std::string>("targetdetect/diagonal_cascade", cdDiag, "CascadeDiagonal.xml");
 
-    params.filterByCircularity = true;
-    params.minCircularity = 0.55;
-    params.maxCircularity = 1.0;
-    params.filterByArea = true;
-    params.minArea = 50;
-    params.maxArea = 640*480;
-    params.filterByInertia = false;
-    params.minInertiaRatio = 0.5;
-    params.maxInertiaRatio = 0.75;
-    params.filterByColor = false;
-    params.blobColor = 255;
-    params.filterByConvexity = false;
-    params.minThreshold = 250;
-    params.maxThreshold = 255;
-    params.thresholdStep = 1;
-    params.minRepeatability = 3;
-    params.minDistBetweenBlobs = 100;
-
-    detector = new SimpleBlobDetector(params);
+    cd = new CarDetector(cdHoriz, cdDiag, cdVert);
+    targetFound = false;
 
   }
 
@@ -130,7 +129,7 @@ public:
       return;
     }
 
-	Mat fimage;
+    Mat fimage;
     cv_ptr->image.convertTo(fimage, CV_8UC3);
     Mat grayscale(fimage.rows, fimage.cols, CV_8UC1);
     //vt.computeStateWithColorBlob(fimage);
@@ -139,60 +138,26 @@ public:
 
     geometry_msgs::Pose tgtPose;
     std_msgs::Bool tfound;
-    double colorDist;
 
-    for(i=0; i < fimage.rows; i++)
-        for(j=0; j < fimage.cols; j++)
-        {
-            colorDist = 0.0;
-            for(int k=0; k < 3; k++)
-                colorDist += pow(fimage.at<Vec3b>(i,j)[k]-color[k], 2.0f);
-            colorDist = sqrt(colorDist);
-            if(colorDist < 200)
-                grayscale.at<uchar>(i,j) = 255;
-            else
-                grayscale.at<uchar>(i,j) = 0;
-        }
-
-    //Mat grayscale(fimage.rows, fimage.cols, CV_8UC1);
-    //cvtColor(fimage, grayscale, CV_RGB2GRAY);
-    //grayscale.convertTo(grayscale, CV_8UC1);
-    //grayscale.convertTo(cv_ptr->image, CV_8UC3);
-    cvtColor(grayscale, cv_ptr->image, CV_GRAY2BGR);
-
-    keypoints.clear();
-    detector->detect(grayscale, keypoints);
-    if(keypoints.size() == 0)
-        cout << "No blobs detected" << endl;
-    else
-        cout << "Blobs detected" << keypoints.size() << endl;
-
-    Point pt;
-    for(int i=0; i < keypoints.size(); i++)
-    {
-        pt.x = keypoints[i].pt.x;
-        pt.y = keypoints[i].pt.y;
-        cv::circle(cv_ptr->image, pt, 20, CV_RGB(0,255,0), -1);
-    }
-
-    //drawKeypoints(grayscale, keypoints, cv_ptr->image, CV_RGB(255, 0, 0));
-
-    bool targetFound = false;
-    if(keypoints.size() > 0)
-        targetFound = true;
+    targetFound = cd->DetectCar(fimage, color, 50);
 
     double f = calibMatrix.at<double>(0, 0);
     if(targetFound)
     {
         // The target position is being given relative to the drone pose
+        Rect crect;
+        crect.x = cd->GetX();
+        crect.y = cd->GetY();
+        crect.width = cd->GetWIDTH();
+        crect.height = cd->GetHEIGHT();
+        cv::rectangle(cv_ptr->image, crect, CV_RGB(0,255,0), 3);
 
-        tgtPose.position.z = tgtSize*f/(2.0*keypoints[0].size);
-        tgtPose.position.x = -(pt.y - fimage.rows/2.0)/f;
-        tgtPose.position.y = -(pt.x - fimage.cols/2.0)/f;
+        tgtPose.position.z = tgtSize*f/(2.0*cd->GetWIDTH());
+        tgtPose.position.x = -(cd->GetX() - fimage.rows/2.0)/f;
+        tgtPose.position.y = -(cd->GetY() - fimage.cols/2.0)/f;
         tgtPose.position.x *= tgtPose.position.z;
         tgtPose.position.y *= tgtPose.position.z;
-        cout << keypoints[0].size << endl;
-    
+
         tgtPose.orientation.w = 1;
         tgtPose.orientation.x = 0;
         tgtPose.orientation.y = 0;
@@ -203,9 +168,10 @@ public:
     }
     else
         tfound.data = false;
-      
+
     pose_pub.publish(tfound);
-    
+
+//    cv_ptr->image = fimage.clone();
     image_pub_.publish(cv_ptr->toImageMsg());
   }
 
@@ -213,8 +179,9 @@ public:
 
 int main(int argc, char** argv)
 {
-  ros::init(argc, argv, "target_detector");
+  ros::init(argc, argv, "car_detector");
   ImageConverter ic;
   ros::spin();
   return 0;
 }
+

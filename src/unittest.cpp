@@ -1,8 +1,14 @@
 #include "targetstateestimator.h"
+#include "particlefilter.h"
+#include "urbanmap.hpp"
 
 int main(int argc, char **argv)
 {
     targetStateEstimator tse(10, 10, 1, 0, 0.1, 0.1);
+    //particleFilter pf(50, 0.8, 0.2, Vec3f(2,2,0), Vec3f(-2,-2,0), 0.1);
+    particleFilter *pf;
+    urbanmap um;
+
     Rect r;
     r.x = 2;
     r.width = 2;
@@ -18,5 +24,34 @@ int main(int argc, char **argv)
     tse.MLE();
     cout << tse.mean << endl;
     cout << tse.std << endl;
+
+    um.mkSampleMap();
+    um.loadMap("test.yml");
+
+    pf = new particleFilter(100, 1, 0, um, 0.5);
+    for(int k=0; k < 100; k++)
+        pf->predict(um, 0.1);
+    //pf.update(Point2f(-1,-1), Point2f(1,1), true);
+    pf->display();
+
+    Mat vismap(400, 400, CV_8UC3);
+    um.drawMap(vismap);
+    pf->drawParticles(um, vismap);
+    imwrite("mapita.png", vismap);
+    for(int k=0; k < 10; k++)
+        pf->predict(um, 0.1);
+    vismap = Scalar(0);
+    um.drawMap(vismap);
+    pf->drawParticles(um, vismap);
+    imwrite("mapita2.png", vismap);
+    for(int k=0; k < 10; k++)
+        pf->predict(um, 0.1);
+    pf->update(um, Point2d(1.1,1.1), Point2d(-1.1,-1.1), true);
+    vismap = Scalar(0);
+    um.drawMap(vismap);
+    pf->drawParticles(um, vismap);
+    imwrite("mapita3.png", vismap);
+    pf->display();
+
     return 0;
 }

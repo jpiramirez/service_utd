@@ -1,0 +1,80 @@
+<?xml version="1.0"?>
+
+<launch>
+   <include file="$(find gazebo_ros)/launch/empty_world.launch"/>
+   <arg name="model" default="$(find service_utd)/urdf/quadrotor_downward_cam.gazebo.xacro"/>
+
+   <!-- workaround https://github.com/ros-simulation/gazebo_ros_pkgs/pull/134 -->
+   <!-- <param name="robot_description" command="$(find xacro)/xacro.py '$(arg model)'" /> -->
+
+   <group ns="uav1">
+	   <param name="worldframe" value="/world" />
+	   <param name="baselink" value="/uav1/base_link" />
+	 <param name="targetdetect/camera_info_url" value="$(find service_utd)/calibration.yml" />
+	   <param name="tf_prefix" value="uav2" />
+
+		<node name="drone_setpoint" pkg="service_utd" type="drone_setpoint" respawn="true" />
+  
+		<node name="tf2posestamped" pkg="service_utd" type="tf2posestamped" respawn="true" />
+
+		<param name="targetdetect/color" value="0 0 255" type="str" />  
+		<node name="targetdetector" pkg="service_utd" type="targetdetector" respawn="true" >
+			<remap from="image" to="downward_cam/camera/image" />
+		</node>
+  
+		<param name="waypoints/x" value="-2 2 2 -2 -2 2" />
+		<param name="waypoints/y" value="1.5 1.5 0 0 -1.5 -1.5" />
+		<param name="waypoints/z" value="2 2 2 2 2 2" />
+		<param name="waypointNav" value="false" type="bool" />
+		<param name="alpha" value="0.95" />
+		<param name="beta" value="0.01" />
+		<node name="infocontroller" pkg="service_utd" type="infocontroller" respawn="true" output="screen"/>
+		
+		<param name="controller/twist/linear/xy/k_d" value="0.0" />
+		<param name="controller/twist/linear/xy/k_i" value="0.5" />
+		<param name="controller/twist/linear/xy/k_p" value="2.0" />
+     <include file="$(find hector_quadrotor_gazebo)/launch/spawn_quadrotor.launch">
+       <arg name="name" value="uav1" />
+       <arg name="tf_prefix" value="uav1" />
+       <arg name="model" value="$(arg model)" />
+       <arg name="y" value="-1.0" />
+     </include>
+   </group>
+
+   <group ns="uav2">
+	   <param name="targetdetect/camera_info_url" value="$(find service_utd)/calibration.yml" />
+	   <param name="tf_prefix" value="uav2" />
+
+		<node name="drone_setpoint" pkg="service_utd" type="drone_setpoint" respawn="true" />
+  
+	   <param name="worldframe" value="/world" />
+	   <param name="baselink" value="/uav2/base_link" />
+		<node name="tf2posestamped" pkg="service_utd" type="tf2posestamped" respawn="true" />
+
+		<param name="targetdetect/color" value="0 0 255" type="str" />  
+		<node name="targetdetector" pkg="service_utd" type="targetdetector" respawn="true" >
+			<remap from="image" to="downward_cam/camera/image" />
+		</node>
+  
+		<param name="waypoints/x" value="-2 2 2 -2 -2 2" />
+		<param name="waypoints/y" value="1.5 1.5 0 0 -1.5 -1.5" />
+		<param name="waypoints/z" value="2 2 2 2 2 2" />
+		<param name="waypointNav" value="false" type="bool" />
+		<param name="alpha" value="0.95" />
+		<param name="beta" value="0.01" />
+		<node name="infocontroller" pkg="service_utd" type="infocontroller" respawn="true" output="screen"/>
+		
+		<param name="controller/twist/linear/xy/k_d" value="0.0" />
+		<param name="controller/twist/linear/xy/k_i" value="0.5" />
+		<param name="controller/twist/linear/xy/k_p" value="2.0" />
+
+     <include file="$(find hector_quadrotor_gazebo)/launch/spawn_quadrotor.launch">
+       <arg name="name" value="uav2" />
+       <arg name="tf_prefix" value="uav2" />
+       <arg name="model" value="$(arg model)" />
+       <arg name="y" value="1.0" />
+     </include>
+   </group>
+
+</launch>
+

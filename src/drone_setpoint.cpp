@@ -40,9 +40,9 @@ class droneController
 public:
   droneController()
   {
-    ctrl_pub = nh_.advertise<geometry_msgs::Twist>("/cmd_vel", 2);
-    pose_sub = nh_.subscribe("/ardrone/pose", 2, &droneController::Callback2, this);
-    point_sub = nh_.subscribe("/ardrone/setpoint", 2, &droneController::setpointCallback, this);
+    ctrl_pub = nh_.advertise<geometry_msgs::Twist>("cmd_vel", 2);
+    pose_sub = nh_.subscribe("ardrone/pose", 2, &droneController::Callback2, this);
+    point_sub = nh_.subscribe("ardrone/setpoint", 2, &droneController::setpointCallback, this);
     ROS_INFO_STREAM("Set point controller initialized.");
     x = 0.0;
     y = 0.0;
