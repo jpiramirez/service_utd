@@ -39,10 +39,12 @@ particleFilter::particleFilter(int N, float alpha, float beta, urbanmap um, doub
 
     Vec3f np;
     pp.clear();
+    this->maxvel = maxvel;
 
     for(int i=0; i < N; i++)
     {
         np[0] = gsl_rng_uniform_int (r, um.nedges);
+//        np[0] = 25;
         np[1] = gsl_rng_uniform(r);
         np[2] = maxvel*gsl_rng_uniform(r);
         pp.push_back(np);
@@ -77,8 +79,15 @@ void particleFilter::predict(urbanmap um, double Ts)
     for(int i=0; i < N; i++)
     {
         //cout << "i:" << i << " LEN :" << (int)pp[i][0] << endl;
-        pp[i][1] = pp[i][1]*um.wayln[(int)pp[i][0]] + Ts*pp[i][2] + gsl_ran_gaussian(r, Ts*pp[i][2]/10.0);
+        pp[i][1] = pp[i][1]*um.wayln[(int)pp[i][0]] + Ts*pp[i][2];
         pp[i][1] /= um.wayln[(int)pp[i][0]];
+        pp[i][2] = 2*maxvel*(gsl_rng_uniform(r)-0.5);
+        if(pp[i][2] > maxvel)
+            pp[i][2] = maxvel;
+        if(pp[i][2] < 0)
+            pp[i][2] = 0.0;
+        if(pp[i][1] < 0.0)
+            pp[i][1] = 0.0;
         //In case the relative position is beyond the end of the road
         if(pp[i][1] > 1.0)
         {
@@ -94,8 +103,8 @@ void particleFilter::predict(urbanmap um, double Ts)
                 //Find the edge number corresponding to the departure and
                 //arrival nodes
                 pp[i][0] = um.conn.at<int>(endnode,ndestnode) - 1;
-                pp[i][1] -= 1.0; //incorrect, leave for the moment, come back to fix it
-                //pp[i][1] = 0.0;
+                //pp[i][1] -= 1.0; //incorrect, leave for the moment, come back to fix it
+                pp[i][1] = 0.0;
             }
             else
             {
@@ -181,8 +190,43 @@ void particleFilter::update(urbanmap um, Point2d ul, Point2d br, bool measuremen
         Neff += pow(w[i], 2.0);
     }
     Neff = 1.0/Neff;
-    if(Neff < N/2);
+    double Ns = N/2;
+    if(Neff < Ns)
+    {
+       cout << "Neff=" << Neff << " Ns=" << Ns << endl;
        this->resample();
+    }
+}
+
+// In case the target has been detected and positional information is available,
+// use this function to update the particles.
+void particleFilter::update(urbanmap um, Point2d pos, double stddev)
+{
+    Point2d pt;
+    double nw;
+    double wsum = 0.0;
+    for(int i=0; i < N; i++)
+    {
+        pt = um.ep2coord((int)pp[i][0], pp[i][1]);
+        nw = gsl_ran_gaussian_pdf(pt.x-pos.x, stddev);
+        nw *= gsl_ran_gaussian_pdf(pt.y-pos.y, stddev);
+        w[i] *= nw;
+        wsum += w[i];
+    }
+
+    double Neff = 0.0;
+    for(int i=0; i < N; i++)
+    {
+        w[i] /= wsum;
+        Neff += pow(w[i], 2.0);
+    }
+    Neff = 1.0/Neff;
+    double Ns = N/2;
+    if(Neff < Ns)
+    {
+       cout << "Neff=" << Neff << " Ns=" << Ns << endl;
+       this->resample();
+    }
 }
 
 void particleFilter::update(Point2f mean, Mat &cov, bool measurement)
@@ -194,6 +238,8 @@ void particleFilter::resample()
 {
     vector<double> u, wc;
     vector<int> ind;
+
+    cout << "Resampling requested" << endl;
 
     for(int i=0; i < N; i++)
     {
@@ -282,8 +328,8 @@ Vec3f particleFilter::meanEstim(urbanmap um)
     for(int i=0; i < subpart.size(); i++)
     {
         subw[i] /= wsum;
-        mpart[1] = subpart[i][1]*subw[i];
-        mpart[2] = subpart[i][2]*subw[i];
+        mpart[1] += subpart[i][1]*subw[i];
+        mpart[2] += subpart[i][2]*subw[i];
     }
 
     delete partInEdge;

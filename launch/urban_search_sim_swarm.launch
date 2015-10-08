@@ -1,0 +1,153 @@
+<?xml version="1.0"?>
+
+<launch>
+   <!--include file="$(find gazebo_ros)/launch/empty_world.launch"/-->
+   
+  <include file="$(find gazebo_ros)/launch/empty_world.launch">
+    <arg name="world_name" default="$(find service_utd)/worlds/service.world"/>
+  </include>
+   <arg name="model" default="$(find service_utd)/urdf/quadrotor_downward_cam.gazebo.xacro"/>
+
+   <!-- workaround https://github.com/ros-simulation/gazebo_ros_pkgs/pull/134 -->
+   <!-- <param name="robot_description" command="$(find xacro)/xacro.py '$(arg model)'" /> -->
+
+   <group ns="uav1">
+	   <param name="worldframe" value="/world" />
+	   <param name="baselink" value="/uav1/base_link" />
+	 
+		
+     <include file="$(find hector_quadrotor_gazebo)/launch/spawn_quadrotor.launch">
+       <arg name="name" value="uav1" />
+       <arg name="tf_prefix" value="uav1" />
+       <arg name="model" value="$(arg model)" />
+       <arg name="x" value="0" />
+	   <arg name="y" value="0" />
+     </include>
+   </group>
+
+   <group ns="uav2">
+	   <param name="targetdetect/camera_info_url" value="$(find service_utd)/calibration.yml" />
+	   <param name="tf_prefix" value="uav2" />
+  
+	   <param name="worldframe" value="/world" />
+	   <param name="baselink" value="/uav2/base_link" />
+		<node name="tf2posestamped" pkg="service_utd" type="tf2posestamped" respawn="true" />
+
+
+     <include file="$(find hector_quadrotor_gazebo)/launch/spawn_quadrotor.launch">
+       <arg name="name" value="uav2" />
+       <arg name="tf_prefix" value="uav2" />
+       <arg name="model" value="$(arg model)" />
+       <arg name="x" value="0" />
+	   <arg name="y" value="400" />
+     </include>
+   </group>
+   
+   <group ns="uav3">
+	   <param name="targetdetect/camera_info_url" value="$(find service_utd)/calibration.yml" />
+	   <param name="tf_prefix" value="uav3" />
+  
+	   <param name="worldframe" value="/world" />
+	   <param name="baselink" value="/uav3/base_link" />
+		<node name="tf2posestamped" pkg="service_utd" type="tf2posestamped" respawn="true" />
+
+
+     <include file="$(find hector_quadrotor_gazebo)/launch/spawn_quadrotor.launch">
+       <arg name="name" value="uav3" />
+       <arg name="tf_prefix" value="uav3" />
+       <arg name="model" value="$(arg model)" />
+       <arg name="x" value="0" />
+	   <arg name="y" value="800" />
+     </include>
+   </group>
+   
+   <group ns="uav4">
+	   <param name="targetdetect/camera_info_url" value="$(find service_utd)/calibration.yml" />
+	   <param name="tf_prefix" value="uav4" />
+  
+	   <param name="worldframe" value="/world" />
+	   <param name="baselink" value="/uav4/base_link" />
+		<node name="tf2posestamped" pkg="service_utd" type="tf2posestamped" respawn="true" />
+
+     <include file="$(find hector_quadrotor_gazebo)/launch/spawn_quadrotor.launch">
+       <arg name="name" value="uav4" />
+       <arg name="tf_prefix" value="uav4" />
+       <arg name="model" value="$(arg model)" />
+       <arg name="x" value="400" />
+	   <arg name="y" value="400" />
+     </include>
+   </group>
+   
+      <group ns="uav5">
+	   <param name="targetdetect/camera_info_url" value="$(find service_utd)/calibration.yml" />
+	   <param name="tf_prefix" value="uav5" />
+  
+	   <param name="worldframe" value="/world" />
+	   <param name="baselink" value="/uav5/base_link" />
+		<node name="tf2posestamped" pkg="service_utd" type="tf2posestamped" respawn="true" />
+
+     <include file="$(find hector_quadrotor_gazebo)/launch/spawn_quadrotor.launch">
+       <arg name="name" value="uav5" />
+       <arg name="tf_prefix" value="uav5" />
+       <arg name="model" value="$(arg model)" />
+       <arg name="x" value="400" />
+	   <arg name="y" value="800" />
+     </include>
+   </group>
+   
+      <group ns="uav6">
+	   <param name="targetdetect/camera_info_url" value="$(find service_utd)/calibration.yml" />
+	   <param name="tf_prefix" value="uav6" />
+  
+	   <param name="worldframe" value="/world" />
+	   <param name="baselink" value="/uav6/base_link" />
+		<node name="tf2posestamped" pkg="service_utd" type="tf2posestamped" respawn="true" />
+
+
+     <include file="$(find hector_quadrotor_gazebo)/launch/spawn_quadrotor.launch">
+       <arg name="name" value="uav6" />
+       <arg name="tf_prefix" value="uav6" />
+       <arg name="model" value="$(arg model)" />
+       <arg name="x" value="600" />
+	   <arg name="y" value="0" />
+     </include>
+   </group>
+   
+      <group ns="uav7">
+	   <param name="targetdetect/camera_info_url" value="$(find service_utd)/calibration.yml" />
+	   <param name="tf_prefix" value="uav7" />
+  
+	   <param name="worldframe" value="/world" />
+	   <param name="baselink" value="/uav7/base_link" />
+		<node name="tf2posestamped" pkg="service_utd" type="tf2posestamped" respawn="true" />
+
+
+     <include file="$(find hector_quadrotor_gazebo)/launch/spawn_quadrotor.launch">
+       <arg name="name" value="uav7" />
+       <arg name="tf_prefix" value="uav7" />
+       <arg name="model" value="$(arg model)" />
+       <arg name="x" value="600" />
+	   <arg name="y" value="400" />
+     </include>
+   </group>
+   
+      <group ns="uav8">
+	   <param name="targetdetect/camera_info_url" value="$(find service_utd)/calibration.yml" />
+	   <param name="tf_prefix" value="uav8" />
+  
+	   <param name="worldframe" value="/world" />
+	   <param name="baselink" value="/uav8/base_link" />
+		<node name="tf2posestamped" pkg="service_utd" type="tf2posestamped" respawn="true" />
+
+
+     <include file="$(find hector_quadrotor_gazebo)/launch/spawn_quadrotor.launch">
+       <arg name="name" value="uav8" />
+       <arg name="tf_prefix" value="uav8" />
+       <arg name="model" value="$(arg model)" />
+       <arg name="x" value="600" />
+	   <arg name="y" value="800" />
+     </include>
+   </group>
+
+</launch>
+

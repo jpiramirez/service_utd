@@ -1,11 +1,35 @@
 <?xml version="1.0"?>
 
 <launch>
+
+  <include file="$(find gazebo_ros)/launch/empty_world.launch">
+    <arg name="world_name" default="$(find service_utd)/worlds/service.world"/>
+	<arg name="headless" value="true" />
+	<arg name="gui" value="true" />
+  </include>
+	
+	<group ns="rover">
+  <param name="robot_description"
+		command="$(find xacro)/xacro.py '$(find p3dx_description)/urdf/pioneer3dx.xacro'" />
+  <arg name="x" value="5.0" />
+  <arg name="y" value="5.0" />
+  <node name="urdf_spawner" pkg="gazebo_ros" type="spawn_model"
+		respawn="false" output="screen" args="-urdf -model p3dx -x 7 -y 0 -param robot_description" />
+  <param name="mapname" value="$(find service_utd)/matlabmap.yml" />
+  <node name="rover_controller" pkg="service_utd" type="rover_controller" />
+	</group>
+	
   <param name="targetdetect/camera_info_url" value="$(find service_utd)/calibration.yml" />
 
   <node name="drone_setpoint" pkg="service_utd" type="drone_setpoint" respawn="true" />
   
-  <include file="$(find service_utd)/launch/quadrotor_empty_world.launch"/>
+  <arg name="model" default="$(find service_utd)/urdf/quadrotor_downward_cam.gazebo.xacro"/>
+  
+   <include file="$(find hector_quadrotor_gazebo)/launch/spawn_quadrotor.launch">
+	   <arg name="model" value="$(arg model)" />
+       <arg name="x" value="6.0" />
+	   <arg name="y" value="0.0" />
+     </include>
   
   <node name="tf2posestamped" pkg="service_utd" type="tf2posestamped" respawn="true" />
 
@@ -24,8 +48,9 @@
   <param name="waypointNav" value="false" type="bool" />
   <param name="alpha" value="0.95" />
   <param name="beta" value="0.01" />
-  <param name="mapname" value="$(find service_utd)/squaremap.yml" />
+  <param name="mapname" value="$(find service_utd)/matlabmap.yml" />
   <rosparam param="UAVconnectivity">[]</rosparam>
+  <param name="base_altitude" value="4" />
   <node name="pathplanner" pkg="service_utd" type="pathplanner" respawn="true" output="screen"/>
 
 </launch>

@@ -47,6 +47,7 @@ public:
     float alpha, beta;
     bool randproc;
     float stddev;
+    double maxvel;
 
     particleFilter(int N, float alpha, float beta, Vec3f upperbnd, Vec3f lowerbnd, double stddev);
     particleFilter(int N, float alpha, float beta, urbanmap um, double maxvel);
@@ -55,6 +56,7 @@ public:
     void update(Point2f ul, Point2f br, bool measurement);
     void update(Point2f mean, Mat &cov, bool measurement);
     void update(urbanmap um, Point2d ul, Point2d br, bool measurement);
+    void update(urbanmap um, Point2d pos, double stddev);
     void predict(urbanmap um, double Ts);
     void resample();
     void display();

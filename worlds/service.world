@@ -1,6 +1,18 @@
 <?xml version="1.0" ?>
 <sdf version="1.4">
   <world name="default">
+	<physics type='ode'>
+       <max_step_size>0.002000</max_step_size>
+       <real_time_factor>1.000000</real_time_factor>
+       <real_time_update_rate>500.000000</real_time_update_rate>
+       <gravity>0.000000 0.000000 -9.800000</gravity>
+	   <ode>
+        <solver>
+          <type>quick</type>
+          <iters>100</iters>
+        </solver>
+      </ode>
+    </physics>
     <!-- A global light source -->
     <include>
       <uri>model://sun</uri>
@@ -9,8 +21,8 @@
     <include>
       <uri>model://ground_plane</uri>
     </include>
-    <model name='unit_sphere_1'>
-      <pose>0 -3 0 0 -0 0</pose>
+    <!--model name='unit_sphere_1'>
+      <pose> 41.280787 37.019486 0.25 0 -0 0</pose>
       <link name='link'>
         <inertial>
           <mass>1</mass>
@@ -26,7 +38,7 @@
         <collision name='collision'>
           <geometry>
             <sphere>
-              <radius>0.05</radius>
+              <radius>0.25</radius>
             </sphere>
           </geometry>
           <max_contacts>10</max_contacts>
@@ -43,7 +55,7 @@
         <visual name='visual'>
           <geometry>
             <sphere>
-              <radius>0.05</radius>
+              <radius>0.25</radius>
             </sphere>
           </geometry>
           <material>
@@ -62,6 +74,6 @@
         <gravity>1</gravity>
       </link>
       <static>0</static>
-    </model>
+    </model-->
   </world>
 </sdf>

@@ -123,10 +123,14 @@ void urbanmap::loadMap(string filename)
     sw = coord[0];
     for(i=0; i < coord.size(); i++)
     {
-        if(coord[i].x > ne.x && coord[i].y > ne.y)
-            ne = coord[i];
-        if(coord[i].x < sw.x && coord[i].y < sw.y)
-            sw = coord[i];
+        if(coord[i].x > ne.x)
+            ne.x = coord[i].x;
+        if(coord[i].y > ne.y)
+            ne.y = coord[i].y;
+        if(coord[i].x < sw.x)
+            sw.x = coord[i].x;
+        if(coord[i].y < sw.y)
+            sw.y = coord[i].y;
     }
     cout << "Map Boundaries" << endl;
     cout << "NE: " << ne << "  SW: " << sw << endl;
