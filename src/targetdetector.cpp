@@ -12,6 +12,7 @@
 #include <cv_bridge/cv_bridge.h>
 #include <sensor_msgs/image_encodings.h>
 #include <geometry_msgs/Pose.h>
+#include <geometry_msgs/PoseStamped.h>
 #include <opencv2/opencv.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/highgui/highgui.hpp>
@@ -33,8 +34,10 @@ class ImageConverter
   image_transport::Subscriber image_sub_;
   image_transport::Publisher image_pub_;
   ros::Subscriber caminfo_sub;
+  ros::Subscriber campose_sub;
 
   Vec3i color;
+  Vec3f camerapose;
 
   SimpleBlobDetector *detector;
   SimpleBlobDetector::Params params;
@@ -50,6 +53,7 @@ public:
     image_pub_ = it_.advertise("immarkers", 1);
     image_sub_ = it_.subscribe("image", 1, &ImageConverter::imageCb, this);
     pose_pub = nh_.advertise<std_msgs::Bool>("objectdetected", 2);
+    campose_sub = nh_.subscribe("ardrone/pose", 2, &ImageConverter::poseCallback, this);
     tgtpose_pub = nh_.advertise<geometry_msgs::Pose>("objectpose", 1);
     nh_.param("targetdetect/targetsize", tgtSize, 0.1);
     ROS_INFO_STREAM("Target size is " << tgtSize);
@@ -109,10 +113,18 @@ public:
 
     detector = new SimpleBlobDetector(params);
 
+    camerapose = Vec3f(0, 0, 0);
   }
 
   ~ImageConverter()
   {
+  }
+
+  void poseCallback(const geometry_msgs::PoseStamped::ConstPtr& msg)
+  {
+      camerapose[0] = msg->pose.position.x;
+      camerapose[1] = msg->pose.position.y;
+      camerapose[2] = msg->pose.position.z;
   }
 
   void imageCb(const sensor_msgs::ImageConstPtr& msg)
@@ -186,7 +198,8 @@ public:
     {
         // The target position is being given relative to the drone pose
 
-        tgtPose.position.z = tgtSize*f/(2.0*keypoints[0].size);
+//        tgtPose.position.z = tgtSize*f/(2.0*keypoints[0].size);
+        tgtPose.position.z = camerapose[2];
         tgtPose.position.x = -(pt.y - fimage.rows/2.0)/f;
         tgtPose.position.y = -(pt.x - fimage.cols/2.0)/f;
         tgtPose.position.x *= tgtPose.position.z;

@@ -81,7 +81,7 @@ void particleFilter::predict(urbanmap um, double Ts)
         //cout << "i:" << i << " LEN :" << (int)pp[i][0] << endl;
         pp[i][1] = pp[i][1]*um.wayln[(int)pp[i][0]] + Ts*pp[i][2];
         pp[i][1] /= um.wayln[(int)pp[i][0]];
-        pp[i][2] = 2*maxvel*(gsl_rng_uniform(r)-0.5);
+        pp[i][2] = 3*maxvel*(gsl_rng_uniform(r)-2.0/3.0);
         if(pp[i][2] > maxvel)
             pp[i][2] = maxvel;
         if(pp[i][2] < 0)

@@ -352,7 +352,8 @@ public:
       if(targetFound)
       {
           Point2d tgtpos(targetPosition.position.x, targetPosition.position.y);
-          pf->update(*um, Point2d(x,y)+tgtpos, 0.5);
+//          Vec3f tgtpos = pf->meanEstim(*um);
+          pf->update(*um, Point2d(x,y)+tgtpos, 1);
       }
 
       // Visualizing the pf
@@ -950,10 +951,10 @@ public:
 
       tie(idx, d) = findClosestNode(Point2d(x,y));
 
-      if(!isUAVinGraph)
+      if(!isUAVinGraph && !targetFound)
       {
           tie(idx, d) = findClosestNode(Point2d(x,y));
-          if(norm(Point2d(x,y) - um->coord[idx]) > 0.1 && !targetFound)
+          if(norm(Point2d(x,y) - um->coord[idx]) > 0.1)
           {
               wp_msg.x = um->coord[idx].x;
               wp_msg.y = um->coord[idx].y;
@@ -971,6 +972,10 @@ public:
           {
               wp_msg.x = x+targetPosition.position.x;
               wp_msg.y = y+targetPosition.position.y;
+              Vec3f tgtpos = pf->meanEstim(*um);
+              Point2d tgtestim = um->ep2coord((int)tgtpos[0], tgtpos[1]);
+              wp_msg.x = tgtestim.x;
+              wp_msg.y = tgtestim.y;
               cout << "STATE: Target detected, following it." << endl;
           }
           else if(norm(Point2d(x,y) - um->coord[idx]) < 0.5)
@@ -1067,6 +1072,21 @@ public:
       delete[] Edge;
   }
 
+  std::pair<int, double> findNearestCoord(vector<Point2d> v, Point2d pt)
+  {
+      int nc = 0;
+      double dist = norm(v[0]-pt);
+      for(int i=1; i < v.size(); i++)
+      {
+          if(norm(v[i]-pt) < dist)
+          {
+              dist = norm(v[i]-pt);
+              nc = i;
+          }
+      }
+      return std::pair<int, double>(nc, dist);
+  }
+
   void computeWaypoint(const ros::TimerEvent& te)
   {
 
@@ -1080,11 +1100,22 @@ public:
       bool onEdge=false, onNode=false;
 
       vector<Point2d> coord;
+      xp = 2.0*z*tan(fabs(av/2.0));
+      yp = 2.0*z*tan(fabs(ah/2.0));
 
-      int Nlay = 5;
-      int children[] = {36, 1, 1, 1, 1};
+      // Publishing the particle cloud for visualization
+      PointCloud::Ptr msg (new PointCloud);
+        msg->header.frame_id = "world";
+        msg->height = msg->width = 1;
+        msg->width = pf->N;
+        for(int i=0; i < pf->N; i++)
+        {
+            Point2d ptmp = um->ep2coord((int)pf->pp[i][0], pf->pp[i][1]);
+            msg->points.push_back (pcl::PointXYZ(ptmp.x, ptmp.y, 0.0));
+        }
+        msg->header.stamp = ros::Time::now().toNSec();
+        pclpub.publish (msg);
 
-      Graph G(181);
 //      WeightMap wmap = get(edge_weight, G);
       double weight;
 
@@ -1104,101 +1135,118 @@ public:
 
       Point2d pt;
 
-      double proj = 0;
-      Vec3d vel(x-px, y-py, z-pz);
-      proj = atan2(vel[1],vel[0]);
+      /*************************************/
+      // Tree generation
 
-      while(depth < Nlay)
+      vector<int> search_nodes;
+      vector<bool> search_node_reached;
+      Point2d myLoc(x,y);
+      double planningHorizon = 20;
+      for(int i=0; i < um->coord.size(); i++)
       {
-          chList.clear();
-          for(int k=0; k < pList.size(); k++)
+          pt = um->coord[i];
+          if(norm(myLoc-pt) < planningHorizon && norm(myLoc-pt) > r)
           {
-              for(int i=0; i < children[depth]; i++)
-              {
-                  vertex_id++;
-                  chList.push_back(vertex_id);
-
-
-                  pt = coord[pList[k]];
-
-                  double angle;
-                  if(depth == 0)
-                  {
-//                      angle = M_PI*(2*gsl_rng_uniform(RNG)-1.0);
-                      angle = proj + gsl_ran_gaussian(RNG, M_PI/2.0);
-                  }
-                  else
-                  {
-                      angle = aList[pList[k-1]];
-                      angle += M_PI*(2*gsl_rng_uniform(RNG)-1.0)/(double)(16*depth);
-                  }
-                  pt.x += r*cos(angle);
-                  pt.y += r*sin(angle);
-                  coord.push_back(pt);
-                  aList.push_back(angle);
-                  float x1 = pt.x - 2.0*0.0254 - xp/2.0;
-                  float x2 = pt.x - 2.0*0.0254 + xp/2.0;
-                  float y1 = pt.y - yp/2.0;
-                  float y2 = pt.y + yp/2.0;
-                  Point2d ul(x2,y2);
-                  Point2d br(x1,y1);
-                  double sc = 0.0;
-                  double coll = 0.0;
-                  for(int j=0; j < pf->N; j++)
-                  {
-                      pt = um->ep2coord((int)pf->pp[j][0], pf->pp[j][1]);
-                      if(pt.x < ul.x && pt.y < ul.y && pt.x > br.x && pt.y > br.y)
-                          sc += pf->w[j];
-                  }
-                  pt = coord[pList[k]];
-                  pt.x += r*cos(angle);
-                  pt.y += r*sin(angle);
-                  x1 = pt.x - 0.5;
-                  x2 = pt.x + 0.5;
-                  y1 = pt.y - 0.5;
-                  y2 = pt.y + 0.5;
-                  ul = Point2d(x2,y2);
-                  br = Point2d(x1,y1);
-                  for(int j=0; j < otherUAVst.size(); j++)
-                  {
-                      double estimRad = 0.0;
-                      estimRad = norm(otherUAVvel[j]);
-                      if(sqrt(pow(pt.x-otherUAVst[j][0],2) \
-                         + pow(pt.y-otherUAVst[j][1],2)) < estimRad)
-                         coll += 100.0;
-                  }
-                  if(1-sc > 0)
-                    weight = 1-sc + coll;//+ 0.01*fabs(angle-proj)/M_PI;
-                  else
-                    weight = coll;
-                  tie(e, inserted) = add_edge(pList[k], vertex_id, weight, G);
-              }
+              search_nodes.push_back(i);
+              search_node_reached.push_back(false);
           }
-          pList = chList;
-          depth++;
       }
 
+      cout << "Nodes within reach: " << search_nodes.size() << endl;
+
+      vector<Point2d> vertex_coord;
+      typedef std::pair<int, int> Edge;
+      vector<Edge> E;
+      vector<double> wm;
+      vector<int> leaf;
+      vertex_coord.push_back(myLoc);
+      int maxvertex = 0;
+      double x1, x2, y1, y2;
+//      bool tree_built = false;
+//      while(!tree_built)
+//      {
+          for(int i=0; i < search_nodes.size(); i++)
+          {
+              while(!search_node_reached[i])
+              {
+                  Point2d destnode = um->coord[search_nodes[i]];
+                  int near;
+                  double dist;
+                  tie(near, dist) = findNearestCoord(vertex_coord, destnode);
+                  Point2d nearc = vertex_coord[near];
+                  double angle = atan2(destnode.y-nearc.y, destnode.x-nearc.x);
+                  Point2d newnode = nearc + Point2d(r*cos(angle), r*sin(angle));
+                  vertex_coord.push_back(newnode);
+                  maxvertex++;
+                  E.push_back(Edge(near, maxvertex));
+                  // Computing the edge weight
+                  x1 = x - 2.0*0.0254 - xp/2.0;
+                  x2 = x - 2.0*0.0254 + xp/2.0;
+                  y1 = y - yp/2.0;
+                  y2 = y + yp/2.0;
+                  weight = 0;
+                  for(int k=0; k < pf->N; k++)
+                  {
+                      Point2d pc = um->ep2coord((int)pf->pp[k][0], pf->pp[k][1]);
+                      if(pc.x > x1 && pc.x < x2 && pc.y > y1 && pc.y < y2)
+                      {
+                          weight += pf->w[k];
+                      }
+                  }
+                  if(weight > 1e-10)
+                    wm.push_back(1.0/weight);
+                  else
+                      wm.push_back(0.0);
+                  if(dist < r)
+                  {
+                      search_node_reached[i] = true;
+                      leaf.push_back(maxvertex);
+                  }
+              }
+          }
+//      }
+
+      cout << "Tree has " << vertex_coord.size() << " nodes." << endl;
+      /*************************************/
+
+
+      Graph G(vertex_coord.size());
+      for(int i=0; i < E.size(); i++)
+      {
+          add_edge(E[i].first, E[i].second, wm[i], G);
+          cout << "(" << E[i].first << "," << E[i].second << "," << wm[i] << ") ";
+      }
+
+      cout << "Graph has " << num_vertices(G) << " nodes" << endl;
       IndexMap index = get(vertex_index, G);
       vector<double> d(num_vertices(G));
       vector<vertex_descriptor> p(num_vertices(G));
       vertex_descriptor s = *(vertices(G).first);
+      cout << "Starting node: " << s << endl;
       dijkstra_shortest_paths(G, s, predecessor_map(&p[0]).distance_map(&d[0]));
 
-      int minidx = chList[0];
-      double mindist = d[minidx];
+      cout << "Dijkstra OK" << endl;
+
+      int minidx = leaf[0];
+      double mindist = 1e300;
 
       graph_traits<Graph>::vertex_iterator vi, vend;
       for(tie(vi, vend) = vertices(G); vi!=vend; ++vi)
       {
-          for(int i=0; i < chList.size(); i++)
-          {
-              if(d[*vi] < mindist && chList[i] == index[*vi])
-              {
-                  minidx = index[*vi];
-                  mindist = d[*vi];
-              }
-          }
+          cout << "vertex: " << index[*vi] << " distance: " << d[*vi] << " Pred: " << p[*vi] << endl;
       }
+
+      for(int i=0; i < leaf.size(); i++)
+      {
+          vertex_descriptor vd = leaf[i];
+          if(d[index[vd]] < mindist && index[vd] != s)
+          {
+              minidx = index[vd];
+              mindist = d[vd];
+          }
+
+      }
+
 
       cout << "Minimum distance is " << mindist << " to node " << minidx << endl;
 
@@ -1217,14 +1265,14 @@ public:
           cout << *it << ' ';
       }
 
-      pt = coord[idxpath[0]];
-      if(mindist > 99)
-      {
-          pt = Point2d(x,y);
-          ROS_INFO_STREAM("There is no escape for the drone.");
-      }
+      pt = vertex_coord[idxpath[idxpath.size()-2]];
+//      if(mindist > 99)
+//      {
+//          pt = Point2d(x,y);
+//          ROS_INFO_STREAM("There is no escape for the drone.");
+//      }
 
-      pt = um->coord[idxpath[idxpath.size()-2]];
+     // pt = um->coord[idxpath[idxpath.size()-2]];
       bool coll = false;
       bool climb = false;
       for(int i=0; i < otherUAVst.size(); i++)
@@ -1268,21 +1316,21 @@ public:
       double distance;
       tie(idx, distance) = findClosestNode(Point2d(x,y));
 
-      if(!isUAVinGraph)
-      {
-          tie(idx, distance) = findClosestNode(Point2d(x,y));
-          if(norm(Point2d(x,y) - um->coord[idx]) > 0.1 && !targetFound)
-          {
-              wp_msg.x = um->coord[idx].x;
-              wp_msg.y = um->coord[idx].y;
-              wp_msg.z = baseAltitude;
-              cout << "STATE: Approaching the road network" << endl;
-          }
-          else
-              isUAVinGraph = true;
-      }
-      else
-      {
+//      if(!isUAVinGraph)
+//      {
+//          tie(idx, distance) = findClosestNode(Point2d(x,y));
+//          if(norm(Point2d(x,y) - um->coord[idx]) > 0.1 && !targetFound)
+//          {
+//              wp_msg.x = um->coord[idx].x;
+//              wp_msg.y = um->coord[idx].y;
+//              wp_msg.z = baseAltitude;
+//              cout << "STATE: Approaching the road network" << endl;
+//          }
+//          else
+//              isUAVinGraph = true;
+//      }
+//      else
+//      {
 
 
           if(targetFound)
@@ -1291,14 +1339,15 @@ public:
               wp_msg.y = y+targetPosition.position.y;
               cout << "STATE: Target detected, following it." << endl;
           }
-          else if(norm(Point2d(x,y) - um->coord[idx]) < 0.5)
+          else
+//              if(norm(Point2d(x,y) - um->coord[idx]) < 0.5)
           {
 
               wp_msg.x = pt.x;
               wp_msg.y = pt.y;
               cout << "STATE: Traveling to the next waypoint" << endl;
           }
-      }
+//      }
 
 
           switch(cruiseAltitude)
@@ -1319,14 +1368,13 @@ public:
 
       waypoint_pub.publish(wp_msg);
 
-      xp = 2.0*z*tan(fabs(av/2.0));
-      yp = 2.0*z*tan(fabs(ah/2.0));
+
 
       // The camera is offset 2" from the drone center in the x-axis
-      float x1 = x - 2.0*0.0254 - xp/2.0;
-      float x2 = x - 2.0*0.0254 + xp/2.0;
-      float y1 = y - yp/2.0;
-      float y2 = y + yp/2.0;
+      x1 = x - 2.0*0.0254 - xp/2.0;
+      x2 = x - 2.0*0.0254 + xp/2.0;
+      y1 = y - yp/2.0;
+      y2 = y + yp/2.0;
 
       Mat visimagesc = Mat::zeros(500, 500, CV_8UC3);
       um->drawMap(visimagesc);
@@ -1341,20 +1389,16 @@ public:
       graph_traits<Graph>::edge_iterator ei, ei_end;
       for (tie(ei, ei_end) = edges(G); ei != ei_end; ++ei)
       {
-          uv1 = um->xy2uv(visimagesc.rows, visimagesc.cols, coord[index[source(*ei, G)]]);
-          uv2 = um->xy2uv(visimagesc.rows, visimagesc.cols, coord[index[target(*ei, G)]]);
+          uv1 = um->xy2uv(visimagesc.rows, visimagesc.cols, vertex_coord[index[source(*ei, G)]]);
+          uv2 = um->xy2uv(visimagesc.rows, visimagesc.cols, vertex_coord[index[target(*ei, G)]]);
           cv::line(visimagesc, uv1, uv2, CV_RGB(255,255,255), 1);
           cv::circle(visimagesc, uv2, 3, CV_RGB(255,255,255));
       }
 
-      uv1 = um->xy2uv(visimagesc.rows, visimagesc.cols, Point2d(x,y));
-      uv2 = um->xy2uv(visimagesc.rows, visimagesc.cols, Point2d(x+cos(proj),y+sin(proj)));
-      cv::line(visimagesc, uv1, uv2, CV_RGB(0,0,255), 3);
-
       for(int i=0; i < idxpath.size()-1; i++)
       {
-          uv1 = um->xy2uv(visimagesc.rows, visimagesc.cols, coord[idxpath[i]]);
-          uv2 = um->xy2uv(visimagesc.rows, visimagesc.cols, coord[idxpath[i+1]]);
+          uv1 = um->xy2uv(visimagesc.rows, visimagesc.cols, vertex_coord[idxpath[i]]);
+          uv2 = um->xy2uv(visimagesc.rows, visimagesc.cols, vertex_coord[idxpath[i+1]]);
           cv::line(visimagesc, uv1, uv2, CV_RGB(0,255,0), 2);
       }
 
