@@ -153,6 +153,13 @@ public:
 
       vg = goal-Point2d(x, y);
       anglediff = atan2(vg.y, vg.x) - theta;
+      while(fabs(anglediff) > 2*M_PI)
+      {
+          if(anglediff < 0)
+              anglediff += 2*M_PI;
+          else
+              anglediff -= 2*M_PI;
+      }
       if(fabs(anglediff) > 1e-1)
       {
           control.linear.x = 0;

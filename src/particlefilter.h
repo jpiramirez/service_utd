@@ -52,6 +52,7 @@ public:
     particleFilter(int N, float alpha, float beta, Vec3f upperbnd, Vec3f lowerbnd, double stddev);
     particleFilter(int N, float alpha, float beta, urbanmap um, double maxvel);
     ~particleFilter();
+    void reset(urbanmap um);
     void predict();
     void update(Point2f ul, Point2f br, bool measurement);
     void update(Point2f mean, Mat &cov, bool measurement);

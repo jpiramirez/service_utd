@@ -41,16 +41,78 @@ particleFilter::particleFilter(int N, float alpha, float beta, urbanmap um, doub
     pp.clear();
     this->maxvel = maxvel;
 
+    double totalLen = 0.0;
+    for(int i=0; i < um.wayln.size(); i++)
+        totalLen += um.wayln[i];
+
+    int pcount = 0;
+    for(int i=0; i < um.wayln.size(); i++)
+    {
+        int partPerEdge = (int)((double)N*um.wayln[i]/totalLen);
+        for(int j=0; j < partPerEdge; j++)
+        {
+            np[0] = i;
+            pp.push_back(np);
+            pcount++;
+        }
+    }
+
+    if(pcount < N)
+    {
+        for(int i=pcount; i < N; i++)
+        {
+            np[0] = gsl_rng_uniform_int(r, um.nedges);
+            pp.push_back(np);
+        }
+    }
+
     for(int i=0; i < N; i++)
     {
-        np[0] = gsl_rng_uniform_int (r, um.nedges);
-//        np[0] = 25;
-        np[1] = gsl_rng_uniform(r);
-        np[2] = maxvel*gsl_rng_uniform(r);
-        pp.push_back(np);
+        pp[i][1] = gsl_rng_uniform(r);
+        pp[i][2] = maxvel*gsl_rng_uniform(r);
         w.push_back(1.0/(double)N);
     }
     pfType = GRAPH;
+}
+
+void particleFilter::reset(urbanmap um)
+{
+    Vec3f np;
+    pp.clear();
+    w.clear();
+
+
+    double totalLen = 0.0;
+    for(int i=0; i < um.wayln.size(); i++)
+        totalLen += um.wayln[i];
+
+    int pcount = 0;
+    for(int i=0; i < um.wayln.size(); i++)
+    {
+        int partPerEdge = (int)((double)N*um.wayln[i]/totalLen);
+        for(int j=0; j < partPerEdge; j++)
+        {
+            np[0] = i;
+            pp.push_back(np);
+            pcount++;
+        }
+    }
+
+    if(pcount < N)
+    {
+        for(int i=pcount; i < N; i++)
+        {
+            np[0] = gsl_rng_uniform_int(r, um.nedges);
+            pp.push_back(np);
+        }
+    }
+
+    for(int i=0; i < N; i++)
+    {
+        pp[i][1] = gsl_rng_uniform(r);
+        pp[i][2] = maxvel*gsl_rng_uniform(r);
+        w.push_back(1.0/(double)N);
+    }
 }
 
 particleFilter::~particleFilter()
@@ -183,17 +245,26 @@ void particleFilter::update(urbanmap um, Point2d ul, Point2d br, bool measuremen
         wsum += w[i];
     }
 
+    if(wsum < 0.001)
+    {
+        reset(um);
+        return;
+    }
+
     double Neff = 0.0;
     for(int i=0; i < N; i++)
     {
         w[i] /= wsum;
         Neff += pow(w[i], 2.0);
     }
+
     Neff = 1.0/Neff;
-    double Ns = N/2;
+    if(isnan(Neff))
+        Neff = 0.0;
+    double Ns = N/100;
     if(Neff < Ns)
     {
-       cout << "Neff=" << Neff << " Ns=" << Ns << endl;
+//       cout << "Neff=" << Neff << " Ns=" << Ns << endl;
        this->resample();
     }
 }
@@ -214,6 +285,12 @@ void particleFilter::update(urbanmap um, Point2d pos, double stddev)
         wsum += w[i];
     }
 
+    if(wsum < 1e-100)
+    {
+        reset(um);
+        return;
+    }
+
     double Neff = 0.0;
     for(int i=0; i < N; i++)
     {
@@ -221,10 +298,11 @@ void particleFilter::update(urbanmap um, Point2d pos, double stddev)
         Neff += pow(w[i], 2.0);
     }
     Neff = 1.0/Neff;
-    double Ns = N/2;
+    if(isnan(Neff))
+        Neff = 0.0;
+    double Ns = N/100;
     if(Neff < Ns)
     {
-       cout << "Neff=" << Neff << " Ns=" << Ns << endl;
        this->resample();
     }
 }
@@ -276,11 +354,26 @@ void particleFilter::resample()
 
 void particleFilter::drawParticles(urbanmap um, Mat map)
 {
+    double meanw = 0.0;
+    for(int i=0; i < N; i++)
+    {
+        if(isnan(w[i]))
+        {
+            cout << "NAN WEIGHT!!!!!" << endl;
+            reset(um);
+            return;
+        }
+        meanw += w[i];
+    }
+    meanw /= (double)N;
     for(int i=0; i < N; i++)
     {
         Point2d pt = um.ep2coord((int)pp[i][0], pp[i][1]);
         Point uv = um.xy2uv(map.rows, map.cols, pt);
-        circle(map, uv, 3, CV_RGB(255,0,255));
+        if(w[i] >= meanw)
+            circle(map, uv, 3, CV_RGB(255,0,255));
+        else
+            circle(map, uv, 3, CV_RGB(0,255,255));
     }
 }
 

@@ -31,6 +31,8 @@
 #include <pcl_ros/point_cloud.h>
 #include <pcl/point_types.h>
 
+#define VZERO 1e-100
+
 using namespace std;
 using namespace Eigen;
 using namespace cv;
@@ -55,6 +57,7 @@ class pathPlanner
   vector<Vec3d> otherUAVst, otherUAVpst, otherUAVvel;
   vector<ros::Time> pestim;
   std::map<int, int> UAVid;
+  std::map<int, int> UAVsense;
   std::map<int, service_utd::ParticleSet > pfset;
 
   geometry_msgs::Vector3 wp_msg;
@@ -111,7 +114,9 @@ public:
     pclpub = nh_.advertise<PointCloud>("particles", 1);
 
     vector<int> connlist;
-    nh_.getParam("UAVconnectivity", connlist);
+    nh_.getParam("UAVdetectability", connlist);
+    vector<int> senslist;
+    nh_.getParam("UAVconnectivity", senslist);
     string ss;
     string topic;
     string prefix = "/uav";
@@ -123,16 +128,33 @@ public:
         topic = prefix + ss + "/ardrone/pose";
         otherUAVposes.push_back(nh_.subscribe<geometry_msgs::PoseStamped>(topic, 1, \
                                                                           boost::bind(&pathPlanner::otherUAVCallback, this, _1, connlist[i])));
-        topic = prefix + ss + "/particle_set";
-        pfListeners.push_back(nh_.subscribe<service_utd::ParticleSet>(topic, 1, boost::bind(&pathPlanner::pfCallback, this, _1, connlist[i])));
-        ROS_INFO_STREAM("Node " << nh_.getNamespace() << " subscribing to " << ss);
+        ROS_INFO_STREAM("Node " << nh_.getNamespace() << " subscribing to pose of " << ss);
         otherUAVst.push_back(Vec3d(0,0,0));
         otherUAVpst.push_back(Vec3d(0,0,0));
         otherUAVvel.push_back(Vec3d(0,0,0));
         pestim.push_back(ros::Time::now());
-        pfset[connlist[i]] = service_utd::ParticleSet();
     }
 
+    for(int i=0; i < senslist.size(); i++)
+    {
+        cout << "UAV " << senslist[i] << endl;
+        ss = boost::lexical_cast<string>(senslist[i]);
+        UAVsense[senslist[i]] = i;
+        topic = prefix + ss + "/particle_set";
+        pfListeners.push_back(nh_.subscribe<service_utd::ParticleSet>(topic, 1, boost::bind(&pathPlanner::pfCallback, this, _1, senslist[i])));
+        ROS_INFO_STREAM("Node " << nh_.getNamespace() << " subscribing to particles of " << ss);
+        pfset[senslist[i]] = service_utd::ParticleSet();
+    }
+
+    cout << nh_.getNamespace() << " connected to:" << endl;
+    for(int i=0; i < otherUAVposes.size(); i++)
+    {
+        cout << otherUAVposes[i].getTopic() << endl;
+    }
+    for(int i=0; i < pfset.size(); i++)
+    {
+        cout << pfListeners[i].getTopic() << endl;
+    }
 
 
     ROS_INFO_STREAM("Set point controller initialized.");
@@ -181,7 +203,7 @@ public:
     seqnum = 0;
 
 //    timer = nh_.createTimer(ros::Duration(0.2), &pathPlanner::computeWaypoint, this);
-    timerpf = nh_.createTimer(ros::Duration(1.0), &pathPlanner::broadcastParticles, this);
+    timerpf = nh_.createTimer(ros::Duration(1), &pathPlanner::broadcastParticles, this);
     timer = nh_.createTimer(ros::Duration(0.2), &pathPlanner::pathPlanOverMap, this);
     namedWindow("pdf");
 
@@ -381,8 +403,8 @@ public:
         const geometry_msgs::PoseStampedConstPtr& msg = event.getMessage();
         int callerId = UAVid[detectedUAV];
 
-        if(myId == detectedUAV)
-            return;
+//        if(myId == callerId)
+//            return;
 
         ros::Time ctime = ros::Time::now();
         d = ctime - pestim[callerId];
@@ -413,16 +435,18 @@ public:
   {
       bool broadcast = false;
 
-      for(int i=0; i < otherUAVst.size(); i++)
-      {
-          double distanceToUAV = 0;
-          distanceToUAV += pow(otherUAVst[i][0]-x, 2.0);
-          distanceToUAV += pow(otherUAVst[i][1]-y, 2.0);
-          distanceToUAV += pow(otherUAVst[i][2]-z, 2.0);
-          distanceToUAV = sqrt(distanceToUAV);
-          if(distanceToUAV < detectionRadius)
-              broadcast = true;
-      }
+//      for(int i=0; i < otherUAVst.size(); i++)
+//      {
+//          double distanceToUAV = 0;
+//          distanceToUAV += pow(otherUAVst[i][0]-x, 2.0);
+//          distanceToUAV += pow(otherUAVst[i][1]-y, 2.0);
+//          distanceToUAV += pow(otherUAVst[i][2]-z, 2.0);
+//          distanceToUAV = sqrt(distanceToUAV);
+//          if(distanceToUAV < detectionRadius)
+//              broadcast = true;
+//      }
+
+      broadcast = isUAVinGraph || targetFound;
 
       if(broadcast)
       {
@@ -439,20 +463,24 @@ public:
               v.z = pf->pp[i][2];
               pfmsg.data.push_back(v);
               f64.data = pf->w[i];
+              if(isnan(pf->w[i]))
+                  f64.data = 0.0;
               pfmsg.w.push_back(f64);
           }
           ownpf_pub.publish(pfmsg);
       }
+
+      ROS_INFO_STREAM(nh_.getNamespace() << " broadcasting");
   }
 
   void pfCallback(const ros::MessageEvent<service_utd::ParticleSet const>& event, int detectedUAV)
   {
       const service_utd::ParticleSetConstPtr& msg = event.getMessage();
 
-      int callerId = UAVid[detectedUAV];
+      int callerId = UAVsense[detectedUAV];
       pfset[callerId] = *msg;
 
-      bool broadcast = false;
+      bool receiving = false;
 
 //      for(int i=0; i < otherUAVst.size(); i++)
 //      {
@@ -465,19 +493,22 @@ public:
 //              broadcast = true;
 //      }
 
+      cout << "UAV " << myId << " checking if it receives " << detectedUAV << " with ID " << callerId << endl;
+
+      int collId = UAVid[detectedUAV];
       double distanceToUAV = 0;
-      distanceToUAV += pow(otherUAVst[callerId][0]-x, 2.0);
-      distanceToUAV += pow(otherUAVst[callerId][1]-y, 2.0);
-      distanceToUAV += pow(otherUAVst[callerId][2]-z, 2.0);
+      distanceToUAV += pow(otherUAVst[collId][0]-x, 2.0);
+      distanceToUAV += pow(otherUAVst[collId][1]-y, 2.0);
+      distanceToUAV += pow(otherUAVst[collId][2]-z, 2.0);
       distanceToUAV = sqrt(distanceToUAV);
       if(distanceToUAV < detectionRadius)
-          broadcast = true;
+          receiving = true;
 
 
-      if(!broadcast || msg->N != pf->N || isUAVinGraph == false)
+      if(!receiving || msg->N != pf->N)
           return;
 
-      ROS_INFO_STREAM(nh_.getNamespace() << " fusing PFs");
+      ROS_INFO_STREAM(nh_.getNamespace() << " fusing particles from " << detectedUAV << " with ID " << callerId);
 
 //      double wsum = 0.0;
 //      double fuseRad = 5;
@@ -504,63 +535,132 @@ public:
 
       // Will attempt to fuse the particle sets and resample from them
 
-      vector<double> u, wc;
-      vector<int> ind(pf->N);
-      vector<Vec3f> fusedpp;
-      vector<double> fusedw;
-      double totalW = 0;
+//      vector<double> u, wc;
+//      vector<int> ind(pf->N);
+//      vector<Vec3f> fusedpp;
+//      vector<double> fusedw;
+//      double totalW = 0;
 
-      for(int i=0; i < pf->N; i++)
-      {
-          fusedpp.push_back(pf->pp[i]);
-          Vec3f particle;
-          particle[0] = msg->data[i].x;
-          particle[1] = msg->data[i].y;
-          particle[2] = msg->data[i].z;
-          fusedpp.push_back(particle);
-          fusedw.push_back(pf->w[i]);
-          totalW += pf->w[i];
-          double weight = msg->w[i].data;
-          fusedw.push_back(weight);
-          totalW += weight;
-      }
-
-      // We now have a fused particle set with 2N points.
-      // Let's resample it, but only N times.
-
-      for(int i=0; i < fusedpp.size(); i++)
-      {
-          fusedw[i] /= totalW;
-
-          if(i == 0)
-              wc.push_back(fusedw[0]);
-          else
-              wc.push_back(wc[i-1] + fusedw[i]);
-
-      }
-
-
-//      int k = 0;
 //      for(int i=0; i < pf->N; i++)
 //      {
-//          u.push_back((gsl_rng_uniform(RNG) + i)/(double)pf->N);
-//          while(wc[k] < u[i])
-//              k++;
-//          ind[i] = k;
+//          fusedpp.push_back(pf->pp[i]);
+//          Vec3f particle;
+//          particle[0] = msg->data[i].x;
+//          particle[1] = msg->data[i].y;
+//          particle[2] = msg->data[i].z;
+//          fusedpp.push_back(particle);
+//          fusedw.push_back(pf->w[i]);
+//          totalW += pf->w[i];
+//          double weight = msg->w[i].data;
+//          fusedw.push_back(weight);
+//          totalW += weight;
 //      }
-      for(int i=0; i < pf->N; i++)
-          ind[i] = gsl_rng_uniform_int(RNG, 2*pf->N);
 
-      vector<Vec3f> npp;
-      for(int i=0; i < pf->N; i++)
-          npp.push_back(Vec3f(0,0,0));
-      for(int i=0; i < pf->N; i++)
-      {
-          npp[i] = fusedpp[ind[i]];
-          pf->w[i] = 1.0/(double)pf->N;
-      }
+//      // We now have a fused particle set with 2N points.
+//      // Let's resample it, but only N times.
 
-      pf->pp = npp;
+//      for(int i=0; i < fusedpp.size(); i++)
+//      {
+//          fusedw[i] /= totalW;
+
+//          if(i == 0)
+//              wc.push_back(fusedw[0]);
+//          else
+//              wc.push_back(wc[i-1] + fusedw[i]);
+
+//      }
+
+
+////      int k = 0;
+////      for(int i=0; i < pf->N; i++)
+////      {
+////          u.push_back((gsl_rng_uniform(RNG) + i)/(double)pf->N);
+////          while(wc[k] < u[i])
+////              k++;
+////          ind[i] = k;
+////      }
+//      for(int i=0; i < pf->N; i++)
+//          ind[i] = gsl_rng_uniform_int(RNG, 2*pf->N);
+
+//      vector<Vec3f> npp;
+//      for(int i=0; i < pf->N; i++)
+//          npp.push_back(Vec3f(0,0,0));
+//      for(int i=0; i < pf->N; i++)
+//      {
+//          npp[i] = fusedpp[ind[i]];
+//          pf->w[i] = 1.0/(double)pf->N;
+//      }
+
+//      pf->pp = npp;
+
+
+        /*****************************
+         * Computing per-edge statistics and using them to update the particle set
+         * **************************/
+
+        vector<double> Emean(um->elist.size(), 0.0);
+        vector<double> Evar(um->elist.size(), 0.0);
+        vector<double> Efactor(um->elist.size(), 0.0);
+
+        // Channel filter
+        vector<double> LEfactor(um->elist.size(), 0.0);
+
+        for(int i=0; i < pf->N; i++)
+        {
+            geometry_msgs::Vector3 v = msg->data[i];
+            double w = msg->w[i].data;
+            Emean[(int)v.x] += w*v.y;
+            Evar[(int)v.x] += w*v.y*v.y;
+            Efactor[(int)v.x] += w;
+            LEfactor[(int)pf->pp[i][0]] += pf->w[i];
+        }
+//        cout << nh_.getNamespace() << "Fusing particles from UAV " << detectedUAV << endl;
+
+        for(int i=0; i < Evar.size(); i++)
+        {
+//            cout << " E" << i << " factor=" << Efactor[i];
+//            if(Efactor[i] > VZERO)
+//            {
+//                Evar[i] -= Emean[i]*Emean[i];
+//                Emean[i] /= Efactor[i];
+//                Evar[i] /= Efactor[i];
+//            }
+//            else
+//            {
+//                Emean[i] = 0.0;
+//                Evar[i] = 0.0;
+//                Efactor[i] = 0.0;
+//            }
+//            cout << "Edge " << i << ". Factor: " << Efactor[i] << " Mean: " << Emean[i] << " Var: " << Evar[i] << endl;
+//            Efactor[i] /= um->wayln[i];
+            if(LEfactor[i] > 0.0)
+                Efactor[i] /= LEfactor[i];
+            else
+                Efactor[i] = 0;
+        }
+//        cout << endl;
+        double wsum = 0.0;
+        for(int i=0; i < pf->N; i++)
+        {
+            int enumber = (int)pf->pp[i][0];
+//            double pos = pf->pp[i][1];
+//            double prob = gsl_ran_gaussian_pdf(Emean[enumber]-pos, sqrt(Evar[enumber]));
+//            if(isnan(Emean[enumber]))
+//            {
+//                prob = 0.0;
+//                Efactor[enumber] = 0;
+//            }
+            pf->w[i] *= Efactor[enumber];
+            if(pf->w[i] < 0.0)
+                pf->w[i] = 0.0;
+            wsum += pf->w[i];
+        }
+        if(wsum < 1e-100){
+            pf->reset(*um);
+            return;
+        }
+        for(int i=0; i < pf->N; i++)
+            pf->w[i] /= wsum;
   }
 
   double linePointDistance(Point2d pt, Point2d lineStart, Point2d lineEnd)
@@ -852,7 +952,7 @@ public:
       vector<vertex_descriptor> validNodes;
 
       // Lookahead horizon
-      int numTravEdges = 2;
+      int numTravEdges = 5;
 
       for(tie(vi, vend) = vertices(G); vi!=vend; ++vi)
       {
@@ -1021,6 +1121,7 @@ public:
       Point uv1 = um->xy2uv(visimagesc.rows, visimagesc.cols, Point2d(x2,y2));
       Point uv2 = um->xy2uv(visimagesc.rows, visimagesc.cols, Point2d(x1,y1));
       rectangle(visimagesc, uv1, uv2, CV_RGB(255, 0, 0), 3);
+      cv::putText(visimagesc, nh_.getNamespace().c_str(), uv2, FONT_HERSHEY_SIMPLEX, 0.5, CV_RGB(255,255,255));
       uv1 = um->xy2uv(visimagesc.rows, visimagesc.cols, Point2d(wp_msg.x, wp_msg.y));
       circle(visimagesc, uv1, 10, CV_RGB(0,255,0));
 

@@ -132,8 +132,8 @@ void urbanmap::loadMap(string filename)
         if(coord[i].y < sw.y)
             sw.y = coord[i].y;
     }
-    cout << "Map Boundaries" << endl;
-    cout << "NE: " << ne << "  SW: " << sw << endl;
+//    cout << "Map Boundaries" << endl;
+//    cout << "NE: " << ne << "  SW: " << sw << endl;
 
     for(i=0; i < conlist.size(); i++)
         conlist[i].clear();
@@ -141,7 +141,7 @@ void urbanmap::loadMap(string filename)
     double ned;
     minMaxIdx(conn, NULL, &ned);
     nedges = (int)ned;
-    cout << "Map edges: " << ned << endl;
+//    cout << "Map edges: " << ned << endl;
 
     for(i=0; i < nedges; i++)
     {
@@ -149,31 +149,31 @@ void urbanmap::loadMap(string filename)
         elist.push_back(Point(0,0));
     }
 
-    cout << "(";
+//    cout << "(";
     vector<int> endp;
     for(i=0; i < conn.rows; i++)
     {
         endp.clear();
-        cout << "(";
+//        cout << "(";
         for(j=0; j < conn.cols; j++)
         {
             int u = conn.at<int>(i,j);
             if(u > 0)
             {
                 endp.push_back(j);
-                cout << (int)j << ",";
+//                cout << (int)j << ",";
                 len = pow(coord[i].x-coord[j].x,2.0) + \
                       pow(coord[i].y-coord[j].y,2.0);
                 len = sqrt(len);
                 wayln[u-1] = len;
-                cout << "W" << u-1 << "  L" << len << ",";
+//                cout << "W" << u-1 << "  L" << len << ",";
                 elist[u-1] = Point(i,j);
             }
         }
         conlist.push_back(endp);
-        cout << ")";
+//        cout << ")";
     }
-    cout << ")";
+//    cout << ")";
 
     fs.release();
 

@@ -30,10 +30,20 @@ public:
     Point2d ep2coord(int edge, double pos)
     {
         Point2d pt;
+
         Point2d start = coord[elist[edge].x];
         Point2d end = coord[elist[edge].y];
+        try
+        {
+            if(pos > 1.0 || pos < 0.0)
+                throw pos;
         pt.x = start.x + pos*(end.x-start.x);
         pt.y = start.y + pos*(end.y-start.y);
+        }
+        catch(double e)
+        {
+            cout << "Edge position is out of range: " << e << endl;
+        }
 
         return pt;
     }
