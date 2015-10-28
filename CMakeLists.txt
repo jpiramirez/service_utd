@@ -133,7 +133,7 @@ add_executable(vispose src/vispose.cpp src/vistarget.cpp)
 add_executable(colorpose src/colorpose.cpp src/colortarget.cpp)
 add_executable(targetdetector src/targetdetector.cpp)
 add_executable(cardetector src/cardetector.cpp)
-add_executable(unittest src/unittest.cpp src/targetstateestimator.cpp src/particlefilter.cpp src/urbanmap.cpp)
+add_executable(unittest src/unittest.cpp src/targetstateestimator.cpp src/particlefilter.cpp src/urbanmap.cpp src/inh_particlefilter.cpp)
 add_executable(drone_odom src/drone_odom.cpp)
 add_executable(drone_setpoint src/drone_setpoint.cpp)
 add_executable(rover_controller src/rover_controller.cpp src/urbanmap.cpp)
@@ -143,7 +143,7 @@ add_executable(ros2matlab src/ros2matlab.cpp)
 add_executable(xml2octave src/xml2octave.cpp)
 add_executable(drone_waypoint_nav src/drone_waypoint_nav src/targetstateestimator.cpp)
 add_executable(traindetector src/traindetector.cpp)
-add_executable(pathplanner src/pathplanner.cpp src/particlefilter.cpp src/urbanmap.cpp)
+add_executable(pathplanner src/pathplanner.cpp src/particlefilter.cpp src/inh_particlefilter.cpp src/urbanmap.cpp)
 
 ## Add cmake target dependencies of the executable/library
 ## as an example, message headers may need to be generated before nodes

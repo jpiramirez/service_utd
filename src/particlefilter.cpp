@@ -300,7 +300,7 @@ void particleFilter::update(urbanmap um, Point2d pos, double stddev)
     Neff = 1.0/Neff;
     if(isnan(Neff))
         Neff = 0.0;
-    double Ns = N/100;
+    double Ns = (double)N/2.0;
     if(Neff < Ns)
     {
        this->resample();

@@ -35,6 +35,7 @@ using namespace std;
 
 class particleFilter
 {
+protected:
     uchar pfType;
     const gsl_rng_type *T;
     gsl_rng *r;

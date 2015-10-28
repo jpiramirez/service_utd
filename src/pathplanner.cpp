@@ -14,6 +14,7 @@
 #include <eigen3/Eigen/Dense>
 #include <math.h>
 #include "particlefilter.h"
+#include "inh_particlefilter.hpp"
 #include "urbanmap.hpp"
 #include <string>
 #include <fstream>
@@ -69,7 +70,8 @@ class pathPlanner
   float px, py, pz;
   Vec3d ownVel;
   float setx, sety, setz;
-  particleFilter *pf;
+//  particleFilter *pf;
+  inhParticleFilter *pf;
   urbanmap *um;
   float fv, fh;
   float av, ah;
@@ -184,7 +186,8 @@ public:
     int npart;
     nh_.param<int>("num_particles", npart, 4000);
 
-    pf = new particleFilter(npart, alpha, beta, *um, 0.3);
+//    pf = new particleFilter(npart, alpha, beta, *um, 0.3);
+    pf = new inhParticleFilter(npart, alpha, beta, *um, 0.3, 100);
 
     double gamman = pow(alpha, alpha/(alpha-beta)) * pow(1-alpha , (1-alpha)/(alpha-beta));
     double gammad = pow(beta , beta/(alpha-beta)) * pow(1-beta , (1-beta)/(alpha-beta));
@@ -289,7 +292,8 @@ public:
       double t = d.toSec();
       //ROS_INFO_STREAM("Sample period: " << t);
 
-      pf->predict(*um, t);
+//      pf->predict(*um, t);
+      pf->simplePredict(*um, t);
 
       x = msg->pose.position.x;
       y = msg->pose.position.y;
@@ -342,7 +346,8 @@ public:
       float y1 = y - yp/2.0;
       float y2 = y + yp/2.0;
 
-      pf->update(*um, Point2d(x2,y2), Point2d(x1,y1), detected);
+//      pf->update(*um, Point2d(x2,y2), Point2d(x1,y1), detected);
+      pf->simpleUpdate(*um, Point2d(x2,y2), Point2d(x1,y1), detected);
 
       double wsum = 0.0;
       Point2d pt;
@@ -375,7 +380,7 @@ public:
       {
           Point2d tgtpos(targetPosition.position.x, targetPosition.position.y);
 //          Vec3f tgtpos = pf->meanEstim(*um);
-          pf->update(*um, Point2d(x,y)+tgtpos, 1);
+          pf->particleFilter::update(*um, Point2d(x,y)+tgtpos, 1);
       }
 
       // Visualizing the pf
@@ -661,6 +666,10 @@ public:
         }
         for(int i=0; i < pf->N; i++)
             pf->w[i] /= wsum;
+
+        pf->phist.putElement(pf->pp, 0);
+        pf->whist.putElement(pf->w, 0);
+        pf->tstamp.putElement(ros::Time::now(), 0);
   }
 
   double linePointDistance(Point2d pt, Point2d lineStart, Point2d lineEnd)
