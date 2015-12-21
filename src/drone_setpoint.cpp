@@ -34,6 +34,7 @@ class droneController
   float setx, sety, setz;
   float errx, erry, errz;
   float perrx, perry, perrz;
+  float KPx, KPy, KPz, KDx, KDy, KDz, Ky;
 
   
 public:
@@ -42,6 +43,24 @@ public:
     ctrl_pub = nh_.advertise<geometry_msgs::Twist>("cmd_vel", 2);
     pose_sub = nh_.subscribe("ardrone/pose", 2, &droneController::Callback, this);
     point_sub = nh_.subscribe("ardrone/setpoint", 2, &droneController::setpointCallback, this);
+
+    vector<double> gainlist;
+    nh_.getParam("drone_setpoint/gains", gainlist);
+
+    if(gainlist.size() == 0)
+    {
+        ROS_INFO_STREAM("Gains are not properly set.");
+        ros::shutdown();
+    }
+
+    KPx = gainlist[0];
+    KPy = gainlist[1];
+    KPz = gainlist[2];
+    KDx = gainlist[3];
+    KDy = gainlist[4];
+    KDz = gainlist[5];
+    Ky  = gainlist[6];
+
     ROS_INFO_STREAM("Set point controller initialized.");
     x = 0.0;
     y = 0.0;
@@ -89,15 +108,7 @@ public:
       // front    back    left    right
 
       //odom = msg;
-      float KPx = 0.4; //defaults 0.1 0.1 0.2 0.2 0.2 0.4
-      float KPy = 0.4;
-      float KPz = 0.8;
 
-      float KDx = 0.8;
-      float KDy = 0.8;
-      float KDz = 1.2;
-
-      float Ky = 2;
 
       float n = 1;
 

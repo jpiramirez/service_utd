@@ -3,6 +3,7 @@
 <launch>
   <param name="targetdetect/camera_info_url" value="$(find service_utd)/calibration.yml" />
 
+  <rosparam param="drone_setpoint/gains">[0.4,0.4,0.8,0.8,0.8,1.2,2.0]</rosparam>
   <node name="drone_setpoint" pkg="service_utd" type="drone_setpoint" respawn="true" />
   
   <include file="$(find service_utd)/launch/quadrotor_empty_world.launch"/>
@@ -24,5 +25,6 @@
   <param name="waypointNav" value="false" type="bool" />
   <param name="alpha" value="0.95" />
   <param name="beta" value="0.01" />
+  <param name="greedysearch" value="false" />
   <node name="infocontroller" pkg="service_utd" type="infocontroller" respawn="true" output="screen"/>
 </launch>

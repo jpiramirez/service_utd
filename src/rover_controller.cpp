@@ -1,4 +1,4 @@
-// Set-point controller for the drone
+// Set-point controller for the rover
 //
 // Juan Pablo Ramirez <pablo.ramirez@utdallas.edu>
 // The University of Texas at Dallas
@@ -93,7 +93,6 @@ public:
   {
       delete um;
   }
-
 
   void Callback(const nav_msgs::Odometry::ConstPtr& msg)
   {

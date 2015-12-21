@@ -3,32 +3,27 @@
 <launch>
 
 <include file="$(find gazebo_ros)/launch/empty_world.launch">
-	<arg name="world_name" default="$(find service_utd)/worlds/service.world"/>
+	<arg name="world_name" default="$(find service_utd)/worlds/servicecity.world"/>
 	<arg name="headless" value="true" />
 	<arg name="gui" value="true" />
 </include>
 
-	<group ns="target">
+	<group ns="rover">
 <param name="robot_description"
 		command="$(find xacro)/xacro.py '$(find p3dx_description)/urdf/pioneer3dx.xacro'" />
 <arg name="x" value="5.0" />
 <arg name="y" value="5.0" />
 <node name="urdf_spawner" pkg="gazebo_ros" type="spawn_model"
-		respawn="false" output="screen" args="-urdf -model p3dx -x 26.8 -y 20 -param robot_description" />
-<param name="mapname" value="$(find service_utd)/matlabmap.yml" />
-<node name="rover_controller" pkg="service_utd" type="rover_controller" output="screen" />
-<rosparam param="ugs/x">[26.8]</rosparam>
-<rosparam param="ugs/y">[24]</rosparam>
-<param name="detection_radius" value="1" />
-<param name="comm_radius" value="5" />
+		respawn="false" output="screen" args="-urdf -model p3dx -x 15 -y 0 -param robot_description" />
+<param name="mapname" value="$(find service_utd)/dasgrid.yml" />
+<rosparam param="ugs/x">[20]</rosparam>
+<rosparam param="ugs/y">[20]</rosparam>
+<param name="detection_radius" value="3" />
 <param name="alpha" value="0.95" />
 <param name="beta" value="0.01" />
-<rosparam param="UAVconnectivity">[1]</rosparam>
-<node name="groundsensors" pkg="service_utd" type="groundsensors" />
+<node name="rover_controller" pkg="service_utd" type="rover_controller" />
 	</group>
 
-
-<group ns="uav1">
 <param name="targetdetect/camera_info_url" value="$(find service_utd)/calibration.yml" />
 
 <rosparam param="drone_setpoint/gains">[0.4,0.4,0.8,0.8,0.8,1.2,0.8]</rosparam>
@@ -60,11 +55,10 @@
 <param name="waypointNav" value="false" type="bool" />
 <param name="alpha" value="0.95" />
 <param name="beta" value="0.01" />
-<param name="mapname" value="$(find service_utd)/matlabmap.yml" />
+<param name="mapname" value="$(find service_utd)/dasgrid.yml" />
 <rosparam param="UAVconnectivity">[]</rosparam>
-<param name="base_altitude" value="4" />
+<param name="base_altitude" value="5" />
 <param name="batchsimulation" value="false" />
 <node name="pathplanner" pkg="service_utd" type="pathplanner" output="screen" required="true"/>
-</group>
 
 </launch>

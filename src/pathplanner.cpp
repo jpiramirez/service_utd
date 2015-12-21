@@ -10,6 +10,7 @@
 #include <geometry_msgs/PoseStamped.h>
 #include <geometry_msgs/Vector3.h>
 #include <service_utd/ProbMap.h>
+#include <service_utd/SoftMeasure.h>
 #include <geometry_msgs/Point.h>
 #include <eigen3/Eigen/Dense>
 #include <math.h>
@@ -51,6 +52,7 @@ class pathPlanner
   ros::Subscriber pose_sub;
   ros::Subscriber object_sub;
   ros::Subscriber tgtpose_sub;
+  ros::Subscriber softmeas_sub;
   vector<ros::Subscriber> otherUAVposes;
   vector<ros::Subscriber> pfListeners;
   ros::Publisher ownpf_pub;
@@ -103,6 +105,8 @@ class pathPlanner
 
   double baseAltitude;
 
+  bool batchSimulation;
+
 public:
   pathPlanner()
   {
@@ -113,6 +117,7 @@ public:
     pose_sub = nh_.subscribe("ardrone/pose", 2, &pathPlanner::Callback, this);
     object_sub = nh_.subscribe("objectdetected", 2, &pathPlanner::detectionCallback, this);
     tgtpose_sub = nh_.subscribe("objectpose", 1, &pathPlanner::targetPositionCallback, this);
+    softmeas_sub = nh_.subscribe("ground_obs", 1, &pathPlanner::softMeasurementCallback, this);
     pclpub = nh_.advertise<PointCloud>("particles", 1);
 
     vector<int> connlist;
@@ -187,7 +192,7 @@ public:
     nh_.param<int>("num_particles", npart, 4000);
 
 //    pf = new particleFilter(npart, alpha, beta, *um, 0.3);
-    pf = new inhParticleFilter(npart, alpha, beta, *um, 0.3, 100);
+    pf = new inhParticleFilter(npart, alpha, beta, *um, 0.3, 1000);
 
     double gamman = pow(alpha, alpha/(alpha-beta)) * pow(1-alpha , (1-alpha)/(alpha-beta));
     double gammad = pow(beta , beta/(alpha-beta)) * pow(1-beta , (1-beta)/(alpha-beta));
@@ -220,6 +225,8 @@ public:
     detected = false;
 
     nh_.param("waypointNav", waypointNav, false);
+
+    nh_.param("/batchsimulation", batchSimulation, false);
 
     if(waypointNav)
     {
@@ -277,6 +284,17 @@ public:
   {
       delete um;
       delete pf;
+  }
+
+  void softMeasurementCallback(const service_utd::SoftMeasure::ConstPtr& msg)
+  {
+      timesig t = msg->header.stamp;
+      double sAlpha = msg->alpha;
+      double sBeta = msg->beta;
+      Point2d ul(msg->ul.x, msg->ul.y);
+      Point2d br(msg->br.x, msg->br.y);
+
+      pf->processOOSM(*um, ul, br, msg->measurement, t, sAlpha, sBeta);
   }
 
   void targetPositionCallback(const geometry_msgs::Pose::ConstPtr& msg)
@@ -368,6 +386,11 @@ public:
       {
           this->targetFound = true;
           ROS_INFO_STREAM("Target found by UAV " << this->myId);
+          if(batchSimulation)
+          {
+              ROS_INFO_STREAM("Shutting down the node (batch simulations in progress)");
+              ros::shutdown();
+          }
       }
       else
       {
@@ -1150,7 +1173,7 @@ public:
 
       uv1 = um->xy2uv(visimagesc.rows, visimagesc.cols, um->coord[idxpath[0]]);
       for(int i=1; i < idxpath.size(); i++)
-      {          
+      {
           uv2 = um->xy2uv(visimagesc.rows, visimagesc.cols, um->coord[idxpath[i]]);
           cv::line(visimagesc, uv1, uv2, CV_RGB(0,255,0), 2);
           uv1 = uv2;
@@ -1537,4 +1560,3 @@ int main(int argc, char** argv)
   ros::spin();
   return 0;
 }
-

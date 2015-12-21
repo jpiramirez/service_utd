@@ -101,6 +101,8 @@ public:
     squaresize = 0.05;
     nsqx = floor(gridsizex/squaresize);
     nsqy = floor(gridsizey/squaresize);
+    bool greedy;
+    nh_.param<bool>("greedysearch", greedy, false);
     nh_.param<double>("alpha", alpha, 0.8);
     nh_.param<double>("beta", beta, 0.2);
     tse = new targetStateEstimator(nsqy, nsqx, 0.8, 0.2, squaresize, squaresize, 0.1);
@@ -132,7 +134,11 @@ public:
     xcoords.create(nsqy, nsqx, CV_32F);
     ycoords.create(nsqy, nsqx, CV_32F);
 
-    timer = nh_.createTimer(ros::Duration(0.2), &infoController::computeWaypoint, this);
+    if(greedy)
+        timer = nh_.createTimer(ros::Duration(0.2), &infoController::infoGradientWaypoint, this);
+    else
+        timer = nh_.createTimer(ros::Duration(0.2), &infoController::computeWaypoint, this);
+
 
     namedWindow("pdf");
 
@@ -495,6 +501,332 @@ public:
 //      visimage.at<Vec3b>(floor(nsqy/2-nsqy*x/gridsizey), floor(nsqx/2-nsqx*y/gridsizex))[1] = 0;
 //      visimage.at<Vec3b>(floor(nsqy/2-nsqy*x/gridsizey), floor(nsqx/2-nsqx*y/gridsizex))[2] = 255;
       rectangle(visimage, area, Scalar(0,255,0));
+
+      resize(visimage, visimagesc, visimagesc.size());
+
+      cout << "grid is " << visimagesc.rows << "x" << visimagesc.cols << endl;
+      imshow("pdf", visimagesc);
+      waitKey(3);
+
+      searchmap_pub.publish(sm_msg);
+  }
+
+  double gridEntropy(Mat G)
+  {
+      double e = 0.0;
+
+      for(int i=0; i < G.rows; i++)
+      {
+          for(int j=0; j < G.cols; j++)
+          {
+              double val = G.at<float>(i,j);
+
+              if(val > 0.0f)
+              {
+                  double logp = log(val);
+                  e += val*logp;
+              }
+          }
+      }
+
+      return -e;
+  }
+
+  Point2i point2grid(Point2d pt)
+  {
+      Point2i u;
+      u.x = floor(nsqx/2-nsqx*pt.y/gridsizex);
+      u.y = floor(nsqy/2-nsqy*pt.x/gridsizey);
+      if(u.x < 0)
+          u.x = 0;
+      if(u.y < 0)
+          u.y = 0;
+      return u;
+  }
+
+  Rect getCamFootprint(double x, double y, double z)
+  {
+      double xp, yp;
+      Rect area;
+
+      xp = 2.0*z*tan(fabs(av/2.0));
+      yp = 2.0*z*tan(fabs(ah/2.0));
+
+      // The camera is offset 2" from the drone center in the x-axis
+      float x1 = x - 2.0*0.0254 - xp/2.0;
+      float x2 = x - 2.0*0.0254 + xp/2.0;
+      float y1 = y - yp/2.0;
+      float y2 = y + yp/2.0;
+
+      // Our grid is 2x2 meters, centered at (0,0) on the floor
+      area.x = floor(nsqx/2-nsqx*y2/gridsizex);
+      area.y = floor(nsqy/2-nsqy*x2/gridsizey);
+
+      //area.width = floor(nsqx*yp/gridsizex);
+      //area.height = floor(nsqy*xp/gridsizey);
+
+      area.width = floor(yp/squaresize);
+      area.height = floor(xp/squaresize);
+
+      return area;
+  }
+
+  void infoGradientWaypoint(const ros::TimerEvent& te)
+  {
+      // This is the real controller. Once we have a probability distribution for the target
+      // location we send the drone to the most informative location. This requires the setpoint
+      // controller to be running.
+
+      if (area.width == 0 || area.height == 0)
+      {
+          return;
+      }
+
+
+
+      Mat M = tse->getGrid();
+      Mat mask = Mat::zeros(M.rows, M.cols, CV_32F);
+      Mat result = Mat::zeros(M.rows, M.cols, CV_32F);
+      double priorent = gridEntropy(M);
+      cout << "Entropy " << priorent << endl;
+
+      Mat pmask, fov;
+      pmask = Mat::zeros(M.rows, M.cols, CV_32F);
+      Rect iarea;
+
+      //vector<Point2d> searchloc;
+      //vector<double> mutualinfo;
+      Point2d bestloc;
+      double maxMI = -1e6;
+      double vx, vy, vmag;
+      vx = x-px;
+      vy = y-py;
+      vmag = sqrt(vx*vx + vy*vy);
+	  for(int j=0; j < 1; j++)
+	  {
+      for(int i=0; i < 36; i++)
+      {
+          double r = 0.6;
+          double angle = (double)i*2.0*M_PI/36.0;
+          Point2d pt(x + r*cos(angle), y+r*sin(angle));
+          //searchloc.push_back(pt);
+          iarea = getCamFootprint(pt.x, pt.y, z);
+          Mat ThetaZ1 = M.clone();
+          Mat ThetaZ0 = M.clone();
+          if(iarea.x < 0)
+		  {
+			  int rc = iarea.x+iarea.width;
+			  iarea.x = 0;
+			  if(rc > 0)
+				  iarea.width = rc;
+			  else
+				  iarea.width = 0;
+		  }
+          if(iarea.y < 0)
+		  {
+			  int bc = iarea.y+iarea.height;
+			  iarea.y = 0;
+			  if(bc > 0)
+				  iarea.height = bc;
+			  else
+				  iarea.height = 0;
+		  }
+          
+          if(iarea.x >= M.cols)
+		  {
+              iarea.x = M.cols-1;
+			  iarea.width = 0;
+		  }
+          if(iarea.y >= M.rows)
+		  {
+              iarea.y = M.rows-1;
+			  iarea.height = 0;
+		  }
+		  
+		  if(iarea.width+iarea.x >= M.cols)
+            iarea.width = M.cols - iarea.x -1;
+          if(iarea.height+iarea.y >= M.rows)
+            iarea.height = M.rows - iarea.y - 1;
+
+          fov = mask(iarea);
+          mask = Scalar(beta);
+          fov = Scalar(alpha);
+          ThetaZ1 = ThetaZ1.mul(mask);
+          double factor = sum(ThetaZ1)[0];
+          ThetaZ1 = ThetaZ1*(1.0/factor);
+
+          mask = Mat::zeros(M.rows, M.cols, CV_32F);
+          fov = mask(iarea);
+          mask = Scalar(1-beta);
+          fov = Scalar(1-alpha);
+          ThetaZ0 = ThetaZ0.mul(mask);
+          factor = sum(ThetaZ0)[0];
+          ThetaZ0 = ThetaZ0*(1.0/factor);
+
+          double entropy = 0;
+          entropy += gridEntropy(ThetaZ0);
+
+		  double MI = (priorent - entropy) + vx*pt.x + vy*pt.y;
+          //mutualinfo.push_back(MI);
+
+          if(fabs(pt.x) > (double)gridsizex/2.0 ||
+                  fabs(pt.y) > (double)gridsizey/2.0)
+              MI = -10.0;
+
+          cout << "Mutualinfo: " << MI << "  Location: " << pt << endl;
+          if(MI > maxMI)
+          {
+              maxMI = MI;
+              bestloc = pt;
+          }
+      }
+  }
+
+      cout << "Best location " << bestloc << endl;
+	  iarea = getCamFootprint(x, y, z);
+
+      if(iarea.x < 0)
+		  {
+			  int rc = iarea.x+iarea.width;
+			  iarea.x = 0;
+			  if(rc > 0)
+				  iarea.width = rc;
+			  else
+				  iarea.width = 0;
+		  }
+          if(iarea.y < 0)
+		  {
+			  int bc = iarea.y+iarea.height;
+			  iarea.y = 0;
+			  if(bc > 0)
+				  iarea.height = bc;
+			  else
+				  iarea.height = 0;
+		  }
+          
+          if(iarea.x >= M.cols)
+		  {
+              iarea.x = M.cols-1;
+			  iarea.width = 0;
+		  }
+          if(iarea.y >= M.rows)
+		  {
+              iarea.y = M.rows-1;
+			  iarea.height = 0;
+		  }
+		  
+		  if(iarea.width+iarea.x >= M.cols)
+            iarea.width = M.cols - iarea.x -1;
+          if(iarea.height+iarea.y >= M.rows)
+            iarea.height = M.rows - iarea.y - 1;
+      fov = pmask(iarea);
+      fov = Scalar(1.0);
+
+
+
+      Mat probxS = M.mul(pmask);
+      double pxinS = sum(probxS)[0];
+
+      //detectConfidence = alpha*pxinS / (alpha*pxinS + beta*(1-pxinS));
+
+      if(detected)
+      {
+          detectConfidence = alpha*pxinS / (alpha*pxinS + beta*(1-pxinS));
+      }
+      else
+      {
+          detectConfidence = (1-alpha)*pxinS / ((1-alpha)*pxinS + (1-beta)*(1-pxinS));
+      }
+
+      if(detectConfidence > confThresh)
+      {
+          targetFound = true;
+      }
+      else
+          targetFound = false;
+
+      cout << "Detection confidence: " << detectConfidence << endl;
+
+      // If the target has been declared as Found, then switch to minimize the position error
+      // between the drone and the target.
+      if(targetFound)
+      {
+          wp_msg.x = targetPosition.position.x+x;
+          wp_msg.y = targetPosition.position.y+y;
+          wp_msg.z = 1;
+          waypoint_pub.publish(wp_msg);
+          return;
+      }
+
+      Mat covermap(M.rows, M.cols, CV_32F);
+      double minval, maxval;
+      minMaxLoc(M, &minval, &maxval);
+      if(fabs(maxval) > 1e-30)
+          covermap = (M-minval) * 1.0/(maxval-minval);
+      else
+          covermap = Mat::zeros(M.rows, M.cols, CV_32F);
+
+
+      // Converting grid coordinates to world coordinates
+      //wp_msg.x = -squaresize*minloc.y + gridsizey/2.0;
+      //wp_msg.y = -squaresize*minloc.x + gridsizex/2.0;
+      if(waypointNav == false)
+      {
+//          wp_msg.x = xcoords.at<float>(minloc.y, minloc.x)+x;
+//          wp_msg.y = ycoords.at<float>(minloc.y, minloc.x)+y;
+//          wp_msg.z = 1;
+//          cout << "[" << wp_msg.x << "," << wp_msg.y << "]" << endl;
+//          cout << "Val: " << probvol.at<float>(minloc.y, minloc.x) << endl;
+          wp_msg.x = bestloc.x;
+          wp_msg.y = bestloc.y;
+          wp_msg.z = 1;
+      }
+      else
+      {
+          wp_msg.x = wpx[wpcount];
+          wp_msg.y = wpy[wpcount];
+          wp_msg.z = wpz[wpcount];
+      }
+      waypoint_pub.publish(wp_msg);
+
+      sm_msg.data.clear();
+      sm_msg.header.seq = seqnum;
+      sm_msg.header.stamp = ros::Time::now();
+      sm_msg.header.frame_id = "map";
+      sm_msg.width = nsqx;
+      sm_msg.height = nsqy;
+
+      for(int i=0; i < covermap.rows; i++)
+      {
+          for(int j=0; j < covermap.cols; j++)
+          {
+              sm_msg.data.push_back(covermap.at<float>(i,j));
+          }
+      }
+
+      int sfactor = 10;
+      Mat visimage(M.rows, M.cols, CV_8UC3);
+      Mat visimagesc(M.rows*sfactor, M.cols*sfactor, CV_8UC3);
+
+      Mat tempimg(M.rows, M.cols, CV_32FC3);
+
+      cvtColor(covermap, tempimg, CV_GRAY2BGR);
+      tempimg.convertTo(visimage, CV_8UC3, 255.0/(maxval-minval), -minval*255.0/(maxval-minval));
+
+      rectangle(visimage, area, Scalar(0,255,0));
+      Point2i u = point2grid(bestloc);
+      Point2i p = point2grid(Point2d(x,y));
+
+      if(u.x > visimage.cols)
+          u.x = visimage.cols - 1;
+      if(u.y > visimage.rows)
+          u.y = visimage.rows - 1;
+      if(p.x > visimage.cols)
+          p.x = visimage.cols - 1;
+      if(p.y > visimage.rows)
+          p.y = visimage.rows - 1;
+
+      line(visimage, p, u, CV_RGB(255,0,0));
 
       resize(visimage, visimagesc, visimagesc.size());
 

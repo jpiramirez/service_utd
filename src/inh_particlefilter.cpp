@@ -97,7 +97,7 @@ void inhParticleFilter::simpleUpdate(urbanmap um, Point2d ul, Point2d br, bool m
 
 void inhParticleFilter::processOOSM(urbanmap um, Point2d ul, Point2d br, bool measurement, int index, double alpha, double beta)
 {
-    if(index < 1)
+    if(index < 0)
         throw std::out_of_range("Negative indices are not allowed.");
 
     this->pp = phist[index];

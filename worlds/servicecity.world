@@ -1,0 +1,43 @@
+<?xml version="1.0" ?>
+<sdf version="1.4">
+  <world name="default">
+	<physics type='ode'>
+       <max_step_size>0.004000</max_step_size>
+       <real_time_factor>1.000000</real_time_factor>
+       <real_time_update_rate>250.000000</real_time_update_rate>
+	   <!--real_time_update_rate>0.000000</real_time_update_rate-->
+       <gravity>0.000000 0.000000 -9.800000</gravity>
+	   <ode>
+        <solver>
+          <type>quick</type>
+          <iters>200</iters>
+        </solver>
+      </ode>
+    </physics>
+    <!-- A global light source -->
+    <include>
+      <uri>model://sun</uri>
+    </include>
+    <!-- A ground plane -->
+    <include>
+      <uri>model://ground_plane</uri>
+    </include>
+    
+	<model name="ciudad">
+      <pose>0 0 0  0 0 0</pose>
+      <static>true</static>
+      <link name="body">
+        <visual name="visual">
+          <geometry>
+            <mesh><uri>file:///home/servicelab/city.dae</uri></mesh>
+          </geometry>
+        </visual>
+		<collision name="visual">
+          <geometry>
+            <mesh><uri>file:///home/servicelab/city.dae</uri></mesh>
+          </geometry>
+        </collision>
+      </link>
+    </model>
+  </world>
+</sdf>

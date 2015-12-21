@@ -71,6 +71,7 @@ add_message_files(
   TfDistortInfo.msg
   ProbMap.msg
   ParticleSet.msg
+  SoftMeasure.msg
 )
 
 ## Generate services in the 'srv' folder
@@ -144,6 +145,7 @@ add_executable(xml2octave src/xml2octave.cpp)
 add_executable(drone_waypoint_nav src/drone_waypoint_nav src/targetstateestimator.cpp)
 add_executable(traindetector src/traindetector.cpp)
 add_executable(pathplanner src/pathplanner.cpp src/particlefilter.cpp src/inh_particlefilter.cpp src/urbanmap.cpp)
+add_executable(groundsensors src/groundsensors.cpp)
 
 ## Add cmake target dependencies of the executable/library
 ## as an example, message headers may need to be generated before nodes
@@ -161,6 +163,7 @@ add_dependencies(ros2matlab service_utd_generate_messages_cpp)
 add_dependencies(xml2octave service_utd_generate_messages_cpp)
 add_dependencies(drone_waypoint_nav service_utd_generate_messages_cpp)
 add_dependencies(pathplanner service_utd_generate_messages_cpp)
+add_dependencies(groundsensors service_utd_generate_messages_cpp)
 
 ## Specify libraries to link a library or executable target against
 target_link_libraries(vispose
@@ -178,7 +181,7 @@ target_link_libraries(targetdetector
 target_link_libraries(cardetector
    ${catkin_LIBRARIES} ${OpenCV_LIBS}
  )
- 
+
 target_link_libraries(unittest
    ${catkin_LIBRARIES} ${OpenCV_LIBS} ${GSL_LIBRARIES}
  )
@@ -186,11 +189,11 @@ target_link_libraries(unittest
 target_link_libraries(drone_odom
    ${catkin_LIBRARIES} ${OpenCV_LIBS}
  )
- 
+
 target_link_libraries(drone_setpoint
    ${catkin_LIBRARIES} ${OpenCV_LIBS}
  )
- 
+
 target_link_libraries(rover_controller
    ${catkin_LIBRARIES} ${OpenCV_LIBS} ${GSL_LIBRARIES}
  )
@@ -202,11 +205,11 @@ target_link_libraries(infocontroller
 target_link_libraries(tf2posestamped
    ${catkin_LIBRARIES} ${OpenCV_LIBS}
  )
- 
+
 target_link_libraries(ros2matlab
    ${catkin_LIBRARIES} ${OpenCV_LIBS}
  )
- 
+
 target_link_libraries(xml2octave
    ${catkin_LIBRARIES} ${OpenCV_LIBS}
  )
@@ -222,6 +225,10 @@ target_link_libraries(traindetector
 target_link_libraries(pathplanner
    ${catkin_LIBRARIES} ${OpenCV_LIBS} ${GSL_LIBRARIES}
  )
+
+ target_link_libraries(groundsensors
+    ${catkin_LIBRARIES} ${OpenCV_LIBS} ${GSL_LIBRARIES}
+  )
 #############
 ## Install ##
 #############
