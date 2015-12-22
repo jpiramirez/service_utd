@@ -226,7 +226,7 @@ public:
 
     nh_.param("waypointNav", waypointNav, false);
 
-    nh_.param("/batchsimulation", batchSimulation, false);
+    nh_.param("batchsimulation", batchSimulation, false);
 
     if(waypointNav)
     {

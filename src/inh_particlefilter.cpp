@@ -181,14 +181,23 @@ void inhParticleFilter::processOOSM(urbanmap um, Point2d ul, Point2d br, bool me
 
 int inhParticleFilter::findIndex(timesig Ts)
 {
-    int idx = 0;
-    while(Ts.toSec() < tstamp[idx].toSec() && idx < tstamp.size())
+  int idx = 0;
+  while(idx < tstamp.size())
+  {
+    timesig ttest;
+    try
     {
-        idx++;
+      ttest = tstamp[idx];
     }
-
-    if(idx < tstamp.size())
-        return idx;
+    catch(exception &e)
+    {
+      return -1;
+    }
+    if(Ts.toSec() < ttest.toSec())
+      idx++;
     else
-        return -1;
+      return idx;
+  }
+
+  return -1;
 }

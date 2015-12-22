@@ -52,88 +52,99 @@ public:
   UGS()
   {
     pose_sub = nh_.subscribe("p3dx/base_pose_ground_truth", 2, &UGS::Callback, this);
-//    point_sub = nh_.subscribe("ardrone/setpoint", 2, &UGS::setpointCallback, this);
+    //    point_sub = nh_.subscribe("ardrone/setpoint", 2, &UGS::setpointCallback, this);
     ROS_INFO_STREAM("UGS initialized.");
 
-  string ss;
-  string topic;
-  string prefix = "/uav";
-/// List of UAVs that we transmit information to
-  vector<int> connlist;
-  nh_.getParam("UAVconnectivity", connlist);
-  for(int i=0; i < connlist.size(); i++)
-  {
-    cout << "UAV " << connlist[i] << endl;
-    ss = boost::lexical_cast<string>(connlist[i]);
-    UAVid[connlist[i]] = i;
-    topic = prefix + ss + "/ardrone/pose";
-    UAVposes.push_back(nh_.subscribe<geometry_msgs::PoseStamped>(topic, 1, \
-      boost::bind(&UGS::UAVCallback, this, _1, connlist[i])));
-    ROS_INFO_STREAM("Node " << nh_.getNamespace() << " subscribing to pose of " << ss);
-    UAVst.push_back(Vector3d(0,0,0));
-    topic = prefix + ss + "/ground_obs";
-    sm_pub.push_back(nh_.advertise<service_utd::SoftMeasure>(topic, 1));
-    ROS_INFO_STREAM("Enabling transmission to " << topic);
-  }
-
-    T = gsl_rng_mt19937;
-    RNG = gsl_rng_alloc(T);
-    gsl_rng_env_setup();
-
-
-    nh_.getParam("ugs/x", ugsx);
-    nh_.getParam("ugs/y", ugsy);
-    nh_.param<double>("detection_radius", detectrad, 1);
-    nh_.param<double>("comm_radius", commradius, 2);
-
-    nh_.param<double>("alpha", alpha, 0.8);
-    nh_.param<double>("beta", beta, 0.2);
-
-    if(ugsx.size() != ugsy.size())
+    string ss;
+    string topic;
+    string prefix = "/uav";
+    /// List of UAVs that we transmit information to
+    vector<int> connlist;
+    nh_.getParam("UAVconnectivity", connlist);
+    for(int i=0; i < connlist.size(); i++)
     {
-      ROS_INFO_STREAM("The number of x and y coord for UGS does not match.");
-      ros::shutdown();
+      cout << "UAV " << connlist[i] << endl;
+      ss = boost::lexical_cast<string>(connlist[i]);
+      UAVid[connlist[i]] = i;
+      topic = prefix + ss + "/ardrone/pose";
+      UAVposes.push_back(nh_.subscribe<geometry_msgs::PoseStamped>(topic, 1, \
+        boost::bind(&UGS::UAVCallback, this, _1, connlist[i])));
+        ROS_INFO_STREAM("Node " << nh_.getNamespace() << " subscribing to pose of " << ss);
+        UAVst.push_back(Vector3d(0,0,0));
+        topic = prefix + ss + "/ground_obs";
+        sm_pub.push_back(nh_.advertise<service_utd::SoftMeasure>(topic, 1));
+        ROS_INFO_STREAM("Enabling transmission to " << topic);
+      }
+
+      T = gsl_rng_mt19937;
+      RNG = gsl_rng_alloc(T);
+      gsl_rng_env_setup();
+
+
+      nh_.getParam("ugs/x", ugsx);
+      nh_.getParam("ugs/y", ugsy);
+      nh_.param<double>("detection_radius", detectrad, 1);
+      nh_.param<double>("comm_radius", commradius, 2);
+
+      nh_.param<double>("alpha", alpha, 0.8);
+      nh_.param<double>("beta", beta, 0.2);
+
+      if(ugsx.size() != ugsy.size())
+      {
+        ROS_INFO_STREAM("The number of x and y coord for UGS does not match.");
+        ros::shutdown();
+      }
+
+      service_utd::SoftMeasure sm;
+      for(int i=0; i < ugsx.size(); i++)
+      {
+          sm.header.stamp = ros::Time::now();
+          sm.ul.x = ugsx[i] + detectrad/2.0;
+          sm.ul.y = ugsy[i] + detectrad/2.0;
+          sm.br.x = ugsx[i] - detectrad/2.0;
+          sm.br.y = ugsy[i] - detectrad/2.0;
+          sm.measurement = false;
+          ROS_INFO_STREAM("UGS " << i << " located at (" << ugsx[i] << "," << \
+                          ugsy[i] << ")");
+          smvec.push_back(sm);
+      }
+
+
     }
 
-    service_utd::SoftMeasure sm;
-    for(int i=0; i < ugsx.size(); i++)
-      smvec.push_back(sm);
-
-  }
-
-  ~UGS()
-  {
-  }
-
-
-  bool detectRover(int sensor)
-  {
-    bool detect = false;
-
-    if(sqrt(pow(x-ugsx[sensor], 2.0) + pow(y-ugsy[sensor], 2.0)) < detectrad)
-        detect = true;
-    double die = gsl_rng_uniform(RNG);
-    if(detect)
+    ~UGS()
     {
-      if(die < alpha)
+    }
+
+
+    bool detectRover(int sensor)
+    {
+      bool detect = false;
+
+      if(sqrt(pow(x-ugsx[sensor], 2.0) + pow(y-ugsy[sensor], 2.0)) < detectrad)
+      detect = true;
+      double die = gsl_rng_uniform(RNG);
+      if(detect)
+      {
+        if(die < alpha)
         return true;
-      else
+        else
         return false;
-    }
-    if(die < beta)
+      }
+      if(die < beta)
       return true;
-    else
+      else
       return false;
-  }
+    }
 
 
-  void Callback(const nav_msgs::Odometry::ConstPtr& msg)
-  {
+    void Callback(const nav_msgs::Odometry::ConstPtr& msg)
+    {
       ctime = ros::Time::now();
       d = ctime - ptime;
       double t = d.toSec();
 
-     // if(t < 0.02)
+      // if(t < 0.02)
       //    return;
 
       x = msg->pose.pose.position.x;
@@ -153,37 +164,38 @@ public:
           sm.measurement = true;
         }
       }
-  }
+    }
 
-  // This callback uses some "advanced", or rather poorly documented functionality in ROS that allows
-  // the user to add extra parameters.
-  void UAVCallback(const ros::MessageEvent<geometry_msgs::PoseStamped const>& event, int detectedUAV)
-  {
-        const geometry_msgs::PoseStampedConstPtr& msg = event.getMessage();
-        int callerId = UAVid[detectedUAV];
+    // This callback uses some "advanced", or rather poorly documented functionality in ROS that allows
+    // the user to add extra parameters.
+    void UAVCallback(const ros::MessageEvent<geometry_msgs::PoseStamped const>& event, int detectedUAV)
+    {
+      const geometry_msgs::PoseStampedConstPtr& msg = event.getMessage();
+      int callerId = UAVid[detectedUAV];
 
 
 
-        UAVst[callerId] = Vector3d(msg->pose.position.x, msg->pose.position.y, msg->pose.position.z);
+      UAVst[callerId] = Vector3d(msg->pose.position.x, msg->pose.position.y, msg->pose.position.z);
 
-        for(int i=0; i < smvec.size(); i++)
+      for(int i=0; i < smvec.size(); i++)
+      {
+        if(sqrt(pow(ugsx[i]-UAVst[callerId][0],2.0) + pow(ugsy[i]-UAVst[callerId][1],2.0)) < commradius)
         {
-          if(sqrt(pow(ugsx[i]-UAVst[callerId][0],2.0) + pow(ugsy[i]-UAVst[callerId][1],2.0)) < commradius)
-          {
-            sm_pub[callerId].publish(smvec[i]);
-          }
-
+          sm_pub[callerId].publish(smvec[i]);
+          ROS_INFO_STREAM("UAV " << detectedUAV << " seen by UGS " << i);
         }
 
+      }
+
+    }
+
+
+  };
+
+  int main(int argc, char** argv)
+  {
+    ros::init(argc, argv, "groundsensors");
+    UGS dr;
+    ros::spin();
+    return 0;
   }
-
-
-};
-
-int main(int argc, char** argv)
-{
-  ros::init(argc, argv, "groundsensors");
-  UGS dr;
-  ros::spin();
-  return 0;
-}
