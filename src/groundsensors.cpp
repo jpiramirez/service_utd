@@ -109,7 +109,8 @@ public:
           smvec.push_back(sm);
       }
 
-
+      ctime = ros::Time::now();
+      ptime = ros::Time::now();
     }
 
     ~UGS()
@@ -170,6 +171,11 @@ public:
     // the user to add extra parameters.
     void UAVCallback(const ros::MessageEvent<geometry_msgs::PoseStamped const>& event, int detectedUAV)
     {
+      ctime = ros::Time::now();
+      d = ctime - ptime;
+      if(d.toSec() < 0.25)
+        return;
+
       const geometry_msgs::PoseStampedConstPtr& msg = event.getMessage();
       int callerId = UAVid[detectedUAV];
 
@@ -186,7 +192,7 @@ public:
         }
 
       }
-
+      ptime = ctime;
     }
 
 

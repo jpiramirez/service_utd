@@ -106,6 +106,8 @@ class pathPlanner
   double baseAltitude;
 
   bool batchSimulation;
+  ros::Time startT, endT;
+  ros::Duration simlength;
 
 public:
   pathPlanner()
@@ -118,7 +120,7 @@ public:
     object_sub = nh_.subscribe("objectdetected", 2, &pathPlanner::detectionCallback, this);
     tgtpose_sub = nh_.subscribe("objectpose", 1, &pathPlanner::targetPositionCallback, this);
     softmeas_sub = nh_.subscribe("ground_obs", 1, &pathPlanner::softMeasurementCallback, this);
-    pclpub = nh_.advertise<PointCloud>("particles", 1);
+    //pclpub = nh_.advertise<PointCloud>("particles", 1);
 
     vector<int> connlist;
     nh_.getParam("UAVdetectability", connlist);
@@ -178,7 +180,7 @@ public:
     ptime = ros::Time::now();
     ctime = ros::Time::now();
 
-    gsl_rng_default_seed = ctime.nsec;
+    gsl_rng_default_seed = time(NULL);
 
     nh_.param<double>("alpha", alpha, 0.8);
     nh_.param<double>("beta", beta, 0.2);
@@ -192,7 +194,9 @@ public:
     nh_.param<int>("num_particles", npart, 4000);
 
 //    pf = new particleFilter(npart, alpha, beta, *um, 0.3);
-    pf = new inhParticleFilter(npart, alpha, beta, *um, 0.3, 1000);
+    int memsize;
+    nh_.param<int>("memsize", memsize, 100);
+    pf = new inhParticleFilter(npart, alpha, beta, *um, 0.3, memsize);
 
     double gamman = pow(alpha, alpha/(alpha-beta)) * pow(1-alpha , (1-alpha)/(alpha-beta));
     double gammad = pow(beta , beta/(alpha-beta)) * pow(1-beta , (1-beta)/(alpha-beta));
@@ -211,8 +215,8 @@ public:
     seqnum = 0;
 
 //    timer = nh_.createTimer(ros::Duration(0.2), &pathPlanner::computeWaypoint, this);
-    timerpf = nh_.createTimer(ros::Duration(1), &pathPlanner::broadcastParticles, this);
-    timer = nh_.createTimer(ros::Duration(0.2), &pathPlanner::pathPlanOverMap, this);
+    timerpf = nh_.createTimer(ros::Duration(5), &pathPlanner::broadcastParticles, this);
+    timer = nh_.createTimer(ros::Duration(0.25), &pathPlanner::pathPlanOverMap, this);
     namedWindow("pdf");
 
     ptime = ros::Time::now();
@@ -227,6 +231,8 @@ public:
     nh_.param("waypointNav", waypointNav, false);
 
     nh_.param("batchsimulation", batchSimulation, false);
+    if(batchSimulation)
+      startT = ros::Time::now();
 
     if(waypointNav)
     {
@@ -389,6 +395,17 @@ public:
           if(batchSimulation)
           {
               ROS_INFO_STREAM("Shutting down the node (batch simulations in progress)");
+              endT = ros::Time::now();
+              simlength = endT - startT;
+              time_t tt;
+              time(&tt);
+              string stt = boost::lexical_cast<string>(tt);
+              stt = stt + ".txt";
+              ofstream fs;
+              fs.open(stt.c_str());
+              fs << simlength.toSec() << endl;
+              fs.close();
+              ROS_INFO_STREAM("Acquisition time recorded as " << stt);
               ros::shutdown();
           }
       }
@@ -820,17 +837,17 @@ public:
 
 
 
-      PointCloud::Ptr msg (new PointCloud);
-        msg->header.frame_id = "world";
-        msg->height = msg->width = 1;
-        msg->width = pf->N;
-        for(int i=0; i < pf->N; i++)
-        {
-            Point2d ptmp = um->ep2coord((int)pf->pp[i][0], pf->pp[i][1]);
-            msg->points.push_back (pcl::PointXYZ(ptmp.x, ptmp.y, 0.0));
-        }
-        msg->header.stamp = ros::Time::now().toNSec();
-        pclpub.publish (msg);
+      // PointCloud::Ptr msg (new PointCloud);
+      //   msg->header.frame_id = "world";
+      //   msg->height = msg->width = 1;
+      //   msg->width = pf->N;
+      //   for(int i=0; i < pf->N; i++)
+      //   {
+      //       Point2d ptmp = um->ep2coord((int)pf->pp[i][0], pf->pp[i][1]);
+      //       msg->points.push_back (pcl::PointXYZ(ptmp.x, ptmp.y, 0.0));
+      //   }
+      //   msg->header.stamp = ros::Time::now().toNSec();
+      //   pclpub.publish (msg);
 
       tie(idx, d) = findClosestEdge(Point2d(x,y));
       if(d < 0.1)
@@ -1147,13 +1164,14 @@ public:
       float y1 = y - yp/2.0;
       float y2 = y + yp/2.0;
 
-      Mat visimagesc = Mat::zeros(500, 500, CV_8UC3);
+      // Mat visimagesc = Mat::zeros(500, 500, CV_8UC3);
+      Mat visimagesc(500, 500, CV_8UC3, Scalar(255,255,255));
       um->drawMap(visimagesc);
       pf->drawParticles(*um, visimagesc);
       Point uv1 = um->xy2uv(visimagesc.rows, visimagesc.cols, Point2d(x2,y2));
       Point uv2 = um->xy2uv(visimagesc.rows, visimagesc.cols, Point2d(x1,y1));
       rectangle(visimagesc, uv1, uv2, CV_RGB(255, 0, 0), 3);
-      cv::putText(visimagesc, nh_.getNamespace().c_str(), uv2, FONT_HERSHEY_SIMPLEX, 0.5, CV_RGB(255,255,255));
+      cv::putText(visimagesc, nh_.getNamespace().c_str(), uv2, FONT_HERSHEY_SIMPLEX, 0.5, CV_RGB(0,0,0));
       uv1 = um->xy2uv(visimagesc.rows, visimagesc.cols, Point2d(wp_msg.x, wp_msg.y));
       circle(visimagesc, uv1, 10, CV_RGB(0,255,0));
 
@@ -1163,7 +1181,7 @@ public:
       {
           uv1 = um->xy2uv(visimagesc.rows, visimagesc.cols, um->coord[index[source(*ei, G)]]);
           uv2 = um->xy2uv(visimagesc.rows, visimagesc.cols, um->coord[index[target(*ei, G)]]);
-          cv::line(visimagesc, uv1, uv2, CV_RGB(255,255,255), 1);
+          cv::line(visimagesc, uv1, uv2, CV_RGB(0,0,0), 1);
           cv::circle(visimagesc, uv2, 3, CV_RGB(255,255,255));
       }
 
@@ -1237,17 +1255,17 @@ public:
       yp = 2.0*z*tan(fabs(ah/2.0));
 
       // Publishing the particle cloud for visualization
-      PointCloud::Ptr msg (new PointCloud);
-        msg->header.frame_id = "world";
-        msg->height = msg->width = 1;
-        msg->width = pf->N;
-        for(int i=0; i < pf->N; i++)
-        {
-            Point2d ptmp = um->ep2coord((int)pf->pp[i][0], pf->pp[i][1]);
-            msg->points.push_back (pcl::PointXYZ(ptmp.x, ptmp.y, 0.0));
-        }
-        msg->header.stamp = ros::Time::now().toNSec();
-        pclpub.publish (msg);
+      // PointCloud::Ptr msg (new PointCloud);
+      //   msg->header.frame_id = "world";
+      //   msg->height = msg->width = 1;
+      //   msg->width = pf->N;
+      //   for(int i=0; i < pf->N; i++)
+      //   {
+      //       Point2d ptmp = um->ep2coord((int)pf->pp[i][0], pf->pp[i][1]);
+      //       msg->points.push_back (pcl::PointXYZ(ptmp.x, ptmp.y, 0.0));
+      //   }
+      //   msg->header.stamp = ros::Time::now().toNSec();
+      //   pclpub.publish (msg);
 
 //      WeightMap wmap = get(edge_weight, G);
       double weight;
@@ -1509,7 +1527,8 @@ public:
       y1 = y - yp/2.0;
       y2 = y + yp/2.0;
 
-      Mat visimagesc = Mat::zeros(500, 500, CV_8UC3);
+      // Mat visimagesc = Mat::zeros(500, 500, CV_8UC3);
+      Mat visimagesc(500, 500, CV_8UC3, Scalar(255,255,255));
       um->drawMap(visimagesc);
       pf->drawParticles(*um, visimagesc);
       Point uv1 = um->xy2uv(visimagesc.rows, visimagesc.cols, Point2d(x2,y2));
