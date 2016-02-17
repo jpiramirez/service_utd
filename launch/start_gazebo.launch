@@ -1,0 +1,67 @@
+<?xml version="1.0"?>
+
+<launch>
+
+<include file="$(find gazebo_ros)/launch/empty_world.launch">
+  <arg name="world_name" default="$(find service_utd)/worlds/servicebatch.world"/>
+  <arg name="headless" value="true" />
+  <arg name="gui" value="true" />
+</include>
+
+<group ns="target">
+  <param name="robot_description"
+    command="$(find xacro)/xacro.py '$(find p3dx_description)/urdf/pioneer3dx.xacro'" />
+    <node name="urdf_spawner" pkg="gazebo_ros" type="spawn_model"
+      respawn="false" output="screen" args="-urdf -model p3dx -param robot_description" />
+      <!--param name="starting_location" command="$(find service_utd)/scripts/randvertex.py" />
+      <node name="urdf_spawner" pkg="service_utd" type="pioneerlaunch"
+        respawn="false" output="screen" /-->
+</group>
+
+<arg name="model" default="$(find service_utd)/urdf/quadrotor_downward_cam.gazebo.xacro"/>
+
+<group ns="uav1">
+<include file="$(find hector_quadrotor_gazebo)/launch/spawn_quadrotor.launch">
+  <arg name="name" value="uav1" />
+  <arg name="tf_prefix" value="uav1" />
+  <arg name="model" value="$(arg model)" />
+  <arg name="x" value="-1.0" />
+  <arg name="y" value="24.362551" />
+  <arg name="z" value="0.0" />
+</include>
+</group>
+
+<group ns="uav2">
+<include file="$(find hector_quadrotor_gazebo)/launch/spawn_quadrotor.launch">
+  <arg name="name" value="uav2" />
+  <arg name="tf_prefix" value="uav2" />
+  <arg name="model" value="$(arg model)" />
+  <arg name="x" value="42.280787" />
+  <arg name="y" value="38.019486" />
+  <arg name="z" value="0.0" />
+</include>
+</group>
+
+<group ns="uav3">
+<include file="$(find hector_quadrotor_gazebo)/launch/spawn_quadrotor.launch">
+  <arg name="name" value="uav3" />
+  <arg name="tf_prefix" value="uav3" />
+  <arg name="model" value="$(arg model)" />
+  <arg name="x" value="41.764476" />
+  <arg name="y" value="12.914353" />
+  <arg name="z" value="0.0" />
+</include>
+</group>
+
+<group ns="uav4">
+<include file="$(find hector_quadrotor_gazebo)/launch/spawn_quadrotor.launch">
+  <arg name="name" value="uav4" />
+  <arg name="tf_prefix" value="uav4" />
+  <arg name="model" value="$(arg model)" />
+  <arg name="x" value="5.969434" />
+  <arg name="y" value="-1.0" />
+  <arg name="z" value="0.0" />
+</include>
+</group>
+
+</launch>

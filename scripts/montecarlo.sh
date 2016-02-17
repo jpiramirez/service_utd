@@ -1,6 +1,23 @@
 #!/bin/bash
 for i in `seq 1 $1`
   do
+    rosservice call /uav1/controller_manager/switch_controller "{start_controllers: [], stop_controllers: ['controller/twist'], strictness: 2}"
+    rosservice call /uav2/controller_manager/switch_controller "{start_controllers: [], stop_controllers: ['controller/twist'], strictness: 2}"
+    rosservice call /uav3/controller_manager/switch_controller "{start_controllers: [], stop_controllers: ['controller/twist'], strictness: 2}"
+    rosservice call /uav4/controller_manager/switch_controller "{start_controllers: [], stop_controllers: ['controller/twist'], strictness: 2}"
+    rosservice call /uav1/controller_manager/unload_controller "name: 'controller/twist'"
+    rosservice call /uav2/controller_manager/unload_controller "name: 'controller/twist'"
+    rosservice call /uav3/controller_manager/unload_controller "name: 'controller/twist'"
+    rosservice call /uav4/controller_manager/unload_controller "name: 'controller/twist'"
+    rosservice call /uav1/controller_manager/load_controller "name: 'controller/twist'"
+    rosservice call /uav2/controller_manager/load_controller "name: 'controller/twist'"
+    rosservice call /uav3/controller_manager/load_controller "name: 'controller/twist'"
+    rosservice call /uav4/controller_manager/load_controller "name: 'controller/twist'"
+    rosservice call /gazebo/reset_world
+    POSITION=`rosrun service_utd randvertex.py`
+    rosservice call /gazebo/set_model_state '{model_state: { model_name: p3dx, pose: { position: '"$POSITION"', orientation: {x: 0, y: 0, z: 0, w: 0 } }, twist: { linear: {x: 0.0 , y: 0 ,z: 0 } , angular: { x: 0.0 , y: 0 , z: 0.0 } } , reference_frame: world } }'
     roslaunch service_utd urban_search_sim_multiuav_batch.launch
-    sleep 10
+    sleep 3
+
+
   done

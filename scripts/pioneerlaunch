@@ -1,3 +1,4 @@
 #!/bin/bash
 POSITION=`rosrun service_utd randvertex.py`
-rosrun gazebo_ros spawn_model -urdf -model p3dx -param robot_description $POSITION
+rosrun gazebo_ros spawn_model -urdf -model p3dx -param robot_description
+#$POSITION

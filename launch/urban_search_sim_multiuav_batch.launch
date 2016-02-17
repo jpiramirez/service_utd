@@ -3,24 +3,13 @@
 <launch>
   <!--include file="$(find gazebo_ros)/launch/empty_world.launch"/-->
 
-  <include file="$(find gazebo_ros)/launch/empty_world.launch">
+  <!--include file="$(find gazebo_ros)/launch/empty_world.launch">
     <arg name="world_name" default="$(find service_utd)/worlds/servicebatch.world"/>
     <arg name="headless" value="true" />
     <arg name="gui" value="false" />
-  </include>
-
-  <arg name="model" default="$(find service_utd)/urdf/quadrotor_downward_cam.gazebo.xacro"/>
+  </include-->
 
   <group ns="target">
-    <param name="robot_description"
-      command="$(find xacro)/xacro.py '$(find p3dx_description)/urdf/pioneer3dx.xacro'" />
-      <arg name="x" value="5.0" />
-      <arg name="y" value="5.0" />
-      <!--node name="urdf_spawner" pkg="gazebo_ros" type="spawn_model"
-        respawn="false" output="screen" args="-urdf -model p3dx -x 26.8 -y 20 -param robot_description" /-->
-        <param name="starting_location" command="$(find service_utd)/scripts/randvertex.py" />
-        <node name="urdf_spawner" pkg="service_utd" type="pioneerlaunch"
-          respawn="false" output="screen" />
         <param name="mapname" value="$(find service_utd)/matlabmap.yml" />
         <node name="rover_controller" pkg="service_utd" type="rover_controller" output="screen" />
         <rosparam param="ugs/x">[26.8,27.96,34.04,20.24,25.71,11.29]</rosparam>
@@ -57,7 +46,7 @@
         <param name="waypointNav" value="false" type="bool" />
         <param name="alpha" value="0.95" />
         <param name="beta" value="0.01" />
-        <param name="detection_radius" value="0.1" />
+        <param name="detection_radius" value="100" />
         <param name="collision_radius" value="5.0" />
         <param name="num_particles" value="4000" />
         <param name="mapname" value="$(find service_utd)/matlabmap.yml" />
@@ -71,13 +60,7 @@
         <param name="controller/twist/linear/xy/k_d" value="0.0" />
         <param name="controller/twist/linear/xy/k_i" value="0.5" />
         <param name="controller/twist/linear/xy/k_p" value="2.0" />
-        <include file="$(find hector_quadrotor_gazebo)/launch/spawn_quadrotor.launch">
-          <arg name="name" value="uav1" />
-          <arg name="tf_prefix" value="uav1" />
-          <arg name="model" value="$(arg model)" />
-          <arg name="x" value="0.0" />
-          <arg name="y" value="25.362551" />
-        </include>
+
       </group>
 
       <group ns="uav2">
@@ -104,7 +87,7 @@
         <param name="waypointNav" value="false" type="bool" />
         <param name="alpha" value="0.95" />
         <param name="beta" value="0.01" />
-        <param name="detection_radius" value="0.1" />
+        <param name="detection_radius" value="100" />
         <param name="collision_radius" value="5.0" />
         <param name="num_particles" value="4000" />
         <param name="mapname" value="$(find service_utd)/matlabmap.yml" />
@@ -119,13 +102,7 @@
         <param name="controller/twist/linear/xy/k_i" value="0.5" />
         <param name="controller/twist/linear/xy/k_p" value="2.0" />
 
-        <include file="$(find hector_quadrotor_gazebo)/launch/spawn_quadrotor.launch">
-          <arg name="name" value="uav2" />
-          <arg name="tf_prefix" value="uav2" />
-          <arg name="model" value="$(arg model)" />
-          <arg name="x" value="41.280787" />
-          <arg name="y" value="37.019486" />
-        </include>
+
       </group>
 
       <group ns="uav3">
@@ -152,7 +129,7 @@
         <param name="waypointNav" value="false" type="bool" />
         <param name="alpha" value="0.95" />
         <param name="beta" value="0.01" />
-        <param name="detection_radius" value="0.1" />
+        <param name="detection_radius" value="100" />
         <param name="collision_radius" value="5.0" />
         <param name="num_particles" value="4000" />
         <param name="mapname" value="$(find service_utd)/matlabmap.yml" />
@@ -167,16 +144,9 @@
         <param name="controller/twist/linear/xy/k_i" value="0.5" />
         <param name="controller/twist/linear/xy/k_p" value="2.0" />
 
-        <include file="$(find hector_quadrotor_gazebo)/launch/spawn_quadrotor.launch">
-          <arg name="name" value="uav3" />
-          <arg name="tf_prefix" value="uav3" />
-          <arg name="model" value="$(arg model)" />
-          <arg name="x" value="40.764476" />
-          <arg name="y" value="11.914353" />
-        </include>
       </group>
 
-      <!--group ns="uav4">
+      <group ns="uav4">
         <param name="targetdetect/camera_info_url" value="$(find service_utd)/calibration.yml" />
         <param name="tf_prefix" value="uav4" />
 
@@ -215,13 +185,6 @@
         <param name="controller/twist/linear/xy/k_i" value="0.5" />
         <param name="controller/twist/linear/xy/k_p" value="2.0" />
 
-        <include file="$(find hector_quadrotor_gazebo)/launch/spawn_quadrotor.launch">
-          <arg name="name" value="uav4" />
-          <arg name="tf_prefix" value="uav4" />
-          <arg name="model" value="$(arg model)" />
-          <arg name="x" value="6.969434" />
-          <arg name="y" value="0.0" />
-        </include>
-      </group-->
+      </group>
 
     </launch>

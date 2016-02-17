@@ -2,9 +2,9 @@
 <sdf version="1.4">
   <world name="default">
 	<physics type='ode'>
-       <max_step_size>0.008000</max_step_size>
+       <max_step_size>0.001000</max_step_size>
        <real_time_factor>0.800000</real_time_factor>
-       <real_time_update_rate>100.000000</real_time_update_rate>
+       <real_time_update_rate>800.000000</real_time_update_rate>
 	   <!--real_time_update_rate>0.000000</real_time_update_rate-->
        <gravity>0.000000 0.000000 -9.800000</gravity>
 	   <ode>
