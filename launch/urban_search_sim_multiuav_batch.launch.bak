@@ -9,7 +9,18 @@
     <arg name="gui" value="false" />
   </include-->
 
+  <arg name="model" default="$(find service_utd)/urdf/quadrotor_downward_cam.gazebo.xacro"/>
+
   <group ns="target">
+    <param name="robot_description"
+      command="$(find xacro)/xacro.py '$(find p3dx_description)/urdf/pioneer3dx.xacro'" />
+      <arg name="x" value="5.0" />
+      <arg name="y" value="5.0" />
+      <!--node name="urdf_spawner" pkg="gazebo_ros" type="spawn_model"
+        respawn="false" output="screen" args="-urdf -model p3dx -x 26.8 -y 20 -param robot_description" /-->
+        <param name="starting_location" command="$(find service_utd)/scripts/randvertex.py" />
+        <node name="urdf_spawner" pkg="service_utd" type="pioneerlaunch"
+          respawn="false" output="screen" />
         <param name="mapname" value="$(find service_utd)/matlabmap.yml" />
         <node name="rover_controller" pkg="service_utd" type="rover_controller" output="screen" />
         <rosparam param="ugs/x">[26.8,27.96,34.04,20.24,25.71,11.29]</rosparam>
@@ -32,6 +43,8 @@
         <node name="drone_joystick" pkg="service_utd" type="joy2drone.py" respawn="true" />
         <rosparam param="drone_setpoint/gains">[0.4,0.4,0.8,0.8,0.8,1.2,0.8]</rosparam>
         <node name="drone_setpoint" pkg="service_utd" type="drone_setpoint" respawn="true" />
+
+        <node name="tf2posestamped" pkg="service_utd" type="tf2posestamped" respawn="true" />
 
         <param name="targetdetect/color" value="0 0 255" type="str" />
         <node name="targetdetector" pkg="service_utd" type="targetdetector" respawn="true" >
@@ -58,7 +71,13 @@
         <param name="controller/twist/linear/xy/k_d" value="0.0" />
         <param name="controller/twist/linear/xy/k_i" value="0.5" />
         <param name="controller/twist/linear/xy/k_p" value="2.0" />
-
+        <include file="$(find hector_quadrotor_gazebo)/launch/spawn_quadrotor.launch">
+          <arg name="name" value="uav1" />
+          <arg name="tf_prefix" value="uav1" />
+          <arg name="model" value="$(arg model)" />
+          <arg name="x" value="0.0" />
+          <arg name="y" value="25.362551" />
+        </include>
       </group>
 
       <group ns="uav2">
@@ -72,6 +91,7 @@
 
         <param name="worldframe" value="/world" />
         <param name="baselink" value="/uav2/base_link" />
+        <node name="tf2posestamped" pkg="service_utd" type="tf2posestamped" respawn="true" />
 
         <param name="targetdetect/color" value="0 0 255" type="str" />
         <node name="targetdetector" pkg="service_utd" type="targetdetector" respawn="true" >
@@ -99,7 +119,13 @@
         <param name="controller/twist/linear/xy/k_i" value="0.5" />
         <param name="controller/twist/linear/xy/k_p" value="2.0" />
 
-
+        <include file="$(find hector_quadrotor_gazebo)/launch/spawn_quadrotor.launch">
+          <arg name="name" value="uav2" />
+          <arg name="tf_prefix" value="uav2" />
+          <arg name="model" value="$(arg model)" />
+          <arg name="x" value="41.280787" />
+          <arg name="y" value="37.019486" />
+        </include>
       </group>
 
       <group ns="uav3">
@@ -113,6 +139,7 @@
 
         <param name="worldframe" value="/world" />
         <param name="baselink" value="/uav3/base_link" />
+        <node name="tf2posestamped" pkg="service_utd" type="tf2posestamped" respawn="true" />
 
         <param name="targetdetect/color" value="0 0 255" type="str" />
         <node name="targetdetector" pkg="service_utd" type="targetdetector" respawn="true" >
@@ -140,6 +167,13 @@
         <param name="controller/twist/linear/xy/k_i" value="0.5" />
         <param name="controller/twist/linear/xy/k_p" value="2.0" />
 
+        <include file="$(find hector_quadrotor_gazebo)/launch/spawn_quadrotor.launch">
+          <arg name="name" value="uav3" />
+          <arg name="tf_prefix" value="uav3" />
+          <arg name="model" value="$(arg model)" />
+          <arg name="x" value="40.764476" />
+          <arg name="y" value="11.914353" />
+        </include>
       </group>
 
       <group ns="uav4">
@@ -153,6 +187,7 @@
 
         <param name="worldframe" value="/world" />
         <param name="baselink" value="/uav4/base_link" />
+        <node name="tf2posestamped" pkg="service_utd" type="tf2posestamped" respawn="true" />
 
         <param name="targetdetect/color" value="0 0 255" type="str" />
         <node name="targetdetector" pkg="service_utd" type="targetdetector" respawn="true" >
@@ -180,6 +215,13 @@
         <param name="controller/twist/linear/xy/k_i" value="0.5" />
         <param name="controller/twist/linear/xy/k_p" value="2.0" />
 
+        <include file="$(find hector_quadrotor_gazebo)/launch/spawn_quadrotor.launch">
+          <arg name="name" value="uav4" />
+          <arg name="tf_prefix" value="uav4" />
+          <arg name="model" value="$(arg model)" />
+          <arg name="x" value="6.969434" />
+          <arg name="y" value="0.0" />
+        </include>
       </group>
 
     </launch>
