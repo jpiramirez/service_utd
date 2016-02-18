@@ -207,7 +207,7 @@ void urbanmap::drawMap(Mat vismap)
         end = xy2uv(vismap.rows, vismap.cols, coord[elist[i].y]);
         line(vismap, start, end, CV_RGB(0,255,0));
     }
-    for(int i=0; i < nedges; i++)
+    for(int i=0; i < coord.size(); i++)
     {
         start = xy2uv(vismap.rows, vismap.cols, coord[i]);
         circle(vismap, start, 3, CV_RGB(255,0,0));
@@ -218,5 +218,3 @@ bool urbanmap::isPointInEdge(const Point2d pt, double distance)
 {
 
 }
-
-

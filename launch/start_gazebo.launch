@@ -4,20 +4,6 @@
 
 <include file="$(find service_utd)/launch/quadrotor_empty_world.launch" />
 
-<group ns="target">
-  <param name="robot_description"
-    command="$(find xacro)/xacro.py '$(find p3dx_description)/urdf/pioneer3dx.xacro'" />
-    <node name="urdf_spawner" pkg="gazebo_ros" type="spawn_model"
-      respawn="false" output="screen" args="-urdf -model p3dx -param robot_description" />
-  <!-- Just in case we want to replace the Pioneer with a Turtlebot -->
-  <!--include file="$(find turtlebot_gazebo)/launch/includes/kobuki.launch.xml">
-    <arg name="base" value="kobuki"/>
-    <arg name="stacks" value="hexagons"/>
-    <arg name="3d_sensor" value="kinect"/>
-  </include-->
-
-</group>
-
 <group ns="uav1">
 <include file="$(find service_utd)/launch/spawn_quadrotor_with_downward_cam.launch">
   <arg name="name" value="uav1" />
@@ -60,6 +46,23 @@
   <arg name="z" value="0.0" />
 </include>
 <node name="tf2posestamped" pkg="service_utd" type="tf2posestamped" respawn="true" />
+</group>
+
+<group ns="target">
+  <!-- Load the URDF into the ROS Parameter Server -->
+	<param name="robot_description"
+		command="$(find xacro)/xacro.py '$(find p3dx_description)/urdf/pioneer3dx.xacro'" />
+    <!-- Run a python script to the send a service call to gazebo_ros to spawn
+  		a URDF robot -->
+  <node name="urdf_spawner" pkg="gazebo_ros" type="spawn_model"
+  		respawn="false" output="screen" args="-urdf -model p3dx -param robot_description" />
+  <!-- Just in case we want to replace the Pioneer with a Turtlebot -->
+  <!--include file="$(find turtlebot_gazebo)/launch/includes/kobuki.launch.xml">
+    <arg name="base" value="kobuki"/>
+    <arg name="stacks" value="hexagons"/>
+    <arg name="3d_sensor" value="kinect"/>
+  </include-->
+
 </group>
 
 </launch>
