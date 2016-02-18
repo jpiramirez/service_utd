@@ -52,7 +52,9 @@ public:
   roverController()
   {
     ctrl_pub = nh_.advertise<geometry_msgs::Twist>("cmd_vel", 2);
-    pose_sub = nh_.subscribe("p3dx/base_pose_ground_truth", 2, &roverController::Callback, this);
+    string odomtopic;
+    nh_.param<std::string>("odometry_topic", odomtopic, "p3dx/base_pose_ground_truth");
+    pose_sub = nh_.subscribe(odomtopic, 2, &roverController::Callback, this);
 //    point_sub = nh_.subscribe("ardrone/setpoint", 2, &roverController::setpointCallback, this);
     ROS_INFO_STREAM("Rover set point controller initialized.");
     x = 0.0;

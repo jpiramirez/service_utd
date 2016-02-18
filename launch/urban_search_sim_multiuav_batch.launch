@@ -11,7 +11,10 @@
 
   <group ns="target">
         <param name="mapname" value="$(find service_utd)/matlabmap.yml" />
-        <node name="rover_controller" pkg="service_utd" type="rover_controller" output="screen" />
+        <param name="odometry_topic" value="odom" />
+        <node name="rover_controller" pkg="service_utd" type="rover_controller" output="screen">
+          <remap from="cmd_vel" to="cmd_vel_mux/input/teleop" />
+        </node>
         <rosparam param="ugs/x">[26.8,27.96,34.04,20.24,25.71,11.29]</rosparam>
 				<rosparam param="ugs/y">[24,20.08,26.11,22.30,28.31,7.51]</rosparam>
 				<param name="detection_radius" value="1" />
@@ -27,6 +30,8 @@
         <param name="baselink" value="/uav1/base_link" />
         <param name="targetdetect/camera_info_url" value="$(find service_utd)/calibration.yml" />
         <param name="tf_prefix" value="uav1" />
+
+        <node name="tf2posestamped" pkg="service_utd" type="tf2posestamped" respawn="true" />
 
         <node name="joy_node" pkg="joy" type="joy_node" respawn="true"/>
         <node name="drone_joystick" pkg="service_utd" type="joy2drone.py" respawn="true" />
@@ -64,6 +69,8 @@
       <group ns="uav2">
         <param name="targetdetect/camera_info_url" value="$(find service_utd)/calibration.yml" />
         <param name="tf_prefix" value="uav2" />
+
+        <node name="tf2posestamped" pkg="service_utd" type="tf2posestamped" respawn="true" />
 
         <node name="joy_node" pkg="joy" type="joy_node" respawn="true"/>
         <node name="drone_joystick" pkg="service_utd" type="joy2drone.py" respawn="true" />
@@ -106,6 +113,8 @@
         <param name="targetdetect/camera_info_url" value="$(find service_utd)/calibration.yml" />
         <param name="tf_prefix" value="uav3" />
 
+        <node name="tf2posestamped" pkg="service_utd" type="tf2posestamped" respawn="true" />
+
         <node name="joy_node" pkg="joy" type="joy_node" respawn="true"/>
         <node name="drone_joystick" pkg="service_utd" type="joy2drone.py" respawn="true" />
         <rosparam param="drone_setpoint/gains">[0.4,0.4,0.8,0.8,0.8,1.2,0.8]</rosparam>
@@ -145,6 +154,8 @@
       <group ns="uav4">
         <param name="targetdetect/camera_info_url" value="$(find service_utd)/calibration.yml" />
         <param name="tf_prefix" value="uav4" />
+
+        <node name="tf2posestamped" pkg="service_utd" type="tf2posestamped" respawn="true" />
 
         <node name="joy_node" pkg="joy" type="joy_node" respawn="true"/>
         <node name="drone_joystick" pkg="service_utd" type="joy2drone.py" respawn="true" />
