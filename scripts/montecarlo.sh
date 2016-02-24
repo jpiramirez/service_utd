@@ -22,7 +22,7 @@ for i in `seq 1 $1`
 
     POSITION=`rosrun service_utd randvertex.py`
     # Positioning the ground robot at a random road intersection
-    rosservice call /gazebo/set_model_state '{model_state: { model_name: mobile_base, pose: { position: '"$POSITION"', orientation: {x: 0, y: 0, z: 0, w: 0 } }, twist: { linear: {x: 0.0 , y: 0 ,z: 0 } , angular: { x: 0.0 , y: 0 , z: 0.0 } } , reference_frame: world } }'
+    rosservice call /gazebo/set_model_state '{model_state: { model_name: p3dx, pose: { position: '"$POSITION"', orientation: {x: 0, y: 0, z: 0, w: 0 } }, twist: { linear: {x: 0.0 , y: 0 ,z: 0 } , angular: { x: 0.0 , y: 0 , z: 0.0 } } , reference_frame: world } }'
     roslaunch service_utd urban_search_sim_multiuav_batch.launch
     sleep 5
 

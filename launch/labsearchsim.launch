@@ -1,0 +1,106 @@
+<?xml version="1.0"?>
+<!-- Simulation of the laboratory search -->
+<launch>
+  <!--include file="$(find gazebo_ros)/launch/empty_world.launch"/-->
+
+  <!--include file="$(find gazebo_ros)/launch/empty_world.launch">
+    <arg name="world_name" default="$(find service_utd)/worlds/servicebatch.world"/>
+    <arg name="headless" value="true" />
+    <arg name="gui" value="false" />
+  </include-->
+  <param name="/use_sim_time" value="true" />
+
+  <group ns="target">
+        <param name="mapname" value="$(find service_utd)/squaremap.yml" />
+        <param name="odometry_topic" value="p3dx/base_pose_ground_truth" />
+        <node name="rover_controller" pkg="service_utd" type="rover_controller" output="screen">
+          <!--remap from="cmd_vel" to="cmd_vel_mux/input/teleop" /-->
+        </node>
+        <rosparam param="ugs/x">[0,0]</rosparam>
+				<rosparam param="ugs/y">[0,1]</rosparam>
+				<param name="detection_radius" value="1" />
+				<param name="comm_radius" value="2" />
+				<param name="alpha" value="0.95" />
+				<param name="beta" value="0.01" />
+				<rosparam param="UAVconnectivity">[1,2]</rosparam>
+				<node name="groundsensors" pkg="service_utd" type="groundsensors" output="screen" />
+      </group>
+
+      <group ns="uav1">
+        <param name="worldframe" value="/world" />
+        <param name="baselink" value="/uav1/base_link" />
+        <param name="targetdetect/camera_info_url" value="$(find service_utd)/calibration.yml" />
+        <param name="tf_prefix" value="uav1" />
+
+        <node name="tf2posestamped" pkg="service_utd" type="tf2posestamped" respawn="true" />
+
+        <node name="joy_node" pkg="joy" type="joy_node" respawn="true"/>
+        <node name="drone_joystick" pkg="service_utd" type="joy2drone.py" respawn="true" />
+        <rosparam param="drone_setpoint/gains">[0.4,0.4,0.8,0.8,0.8,1.2,0.8]</rosparam>
+        <node name="drone_setpoint" pkg="service_utd" type="drone_setpoint" respawn="true" />
+
+        <param name="targetdetect/color" value="0 0 255" type="str" />
+        <node name="targetdetector" pkg="service_utd" type="targetdetector" respawn="true" >
+          <remap from="image" to="downward_cam/camera/image" />
+        </node>
+
+        <param name="waypoints/x" value="-2 2 2 -2 -2 2" />
+        <param name="waypoints/y" value="1.5 1.5 0 0 -1.5 -1.5" />
+        <param name="waypoints/z" value="2 2 2 2 2 2" />
+        <param name="waypointNav" value="false" type="bool" />
+        <param name="alpha" value="0.95" />
+        <param name="beta" value="0.01" />
+        <param name="detection_radius" value="10" />
+        <param name="collision_radius" value="2.0" />
+        <param name="num_particles" value="4000" />
+        <param name="mapname" value="$(find service_utd)/squaremap.yml" />
+        <rosparam param="UAVdetectability">[2]</rosparam>
+        <rosparam param="UAVconnectivity">[2]</rosparam>
+        <param name="base_altitude" value="1" />
+        <param name="batchsimulation" value="true" />
+        <param name="memsize" value="1" />
+        <node name="pathplanner" pkg="service_utd" type="pathplanner" required="true" output="screen"/>
+
+
+      </group>
+
+      <group ns="uav2">
+        <param name="targetdetect/camera_info_url" value="$(find service_utd)/calibration.yml" />
+        <param name="tf_prefix" value="uav2" />
+
+        <node name="tf2posestamped" pkg="service_utd" type="tf2posestamped" respawn="true" />
+
+        <node name="joy_node" pkg="joy" type="joy_node" respawn="true"/>
+        <node name="drone_joystick" pkg="service_utd" type="joy2drone.py" respawn="true" />
+        <rosparam param="drone_setpoint/gains">[0.4,0.4,0.8,0.8,0.8,1.2,0.8]</rosparam>
+        <node name="drone_setpoint" pkg="service_utd" type="drone_setpoint" respawn="true" />
+
+        <param name="worldframe" value="/world" />
+        <param name="baselink" value="/uav2/base_link" />
+
+        <param name="targetdetect/color" value="0 0 255" type="str" />
+        <node name="targetdetector" pkg="service_utd" type="targetdetector" respawn="true" >
+          <remap from="image" to="downward_cam/camera/image" />
+        </node>
+
+        <param name="waypoints/x" value="-2 2 2 -2 -2 2" />
+        <param name="waypoints/y" value="1.5 1.5 0 0 -1.5 -1.5" />
+        <param name="waypoints/z" value="2 2 2 2 2 2" />
+        <param name="waypointNav" value="false" type="bool" />
+        <param name="alpha" value="0.95" />
+        <param name="beta" value="0.01" />
+        <param name="detection_radius" value="10" />
+        <param name="collision_radius" value="2.0" />
+        <param name="num_particles" value="4000" />
+        <param name="mapname" value="$(find service_utd)/squaremap.yml" />
+        <rosparam param="UAVdetectability">[1]</rosparam>
+        <rosparam param="UAVconnectivity">[1]</rosparam>
+        <param name="base_altitude" value="1" />
+        <param name="batchsimulation" value="true" />
+        <param name="memsize" value="1" />
+        <node name="pathplanner" pkg="service_utd" type="pathplanner" required="true" output="screen"/>
+
+
+      </group>
+
+    </launch>

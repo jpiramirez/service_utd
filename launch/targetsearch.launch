@@ -4,37 +4,37 @@
 <!-- x = [-1.5000   -0.9857   -0.4714    0.0429    0.5571    1.0714] -->
 <!-- y = [-2.0000   -1.0857   -0.1714    0.7429    1.6571] -->
 
-<launch> 
+<launch>
   <node pkg="vicon_bridge" type="vicon_bridge" name="vicon" output="screen">
 		<param name="stream_mode" value="ClientPull" type="str" />
-		<param name="datastream_hostport" value="192.168.45.100:801" type="str" />
+		<param name="datastream_hostport" value="192.168.0.101:801" type="str" />
 		<!--param name="datastream_hostport" value="vicon:801" type="str" /-->
 		<param name="tf_ref_frame_id" value="/world" type="str" />
   </node>
-  
+
   <node name="drone_odom" pkg="service_utd" type="drone_odom" respawn="true" />
-  
-  <!-- The ardrone node has to be running and the downward camera selected 
+
+  <!-- The ardrone node has to be running and the downward camera selected
   <node name="ardrone_driver" pkg="service_utd" type="drone_odom" respawn="true" />
   -->
-  
-  <param name="/targetdetect/camera_info_url" value="$(find service_utd)/calibration.yml" /> 
-  <param name="/targetdetect/color" value="0 255 0" type="str" />  
+
+  <param name="/targetdetect/camera_info_url" value="$(find service_utd)/calibration.yml" />
+  <param name="/targetdetect/color" value="0 255 0" type="str" />
   <node name="targetdetector" pkg="service_utd" type="targetdetector" respawn="true" >
     <remap from="image" to="/ardrone/bottom/image_raw" />
   </node>
-  
+
   <node name="joy_node" pkg="joy" type="joy_node" respawn="true"/>
-  
+
   <node name="drone_joystick" pkg="service_utd" type="joy2drone.py" respawn="true" />
-  
+
   <rosparam param="drone_setpoint/gains">[0.2,0.2,0.4,0.4,0.4,0.6,0.8]</rosparam>
   <node name="drone_setpoint" pkg="service_utd" type="drone_setpoint" respawn="true" output="screen" />
-  
-  
+
+
   <param name="/waypointNav" value="false" type="bool" />
   <param name="/alpha" value="0.769634" />
   <param name="/beta" value="0.0246637" />
-  <param name="greedysearch" value="true" />
+  <param name="greedysearch" value="false" />
   <node name="infocontroller" pkg="service_utd" type="infocontroller" respawn="true" />
 </launch>

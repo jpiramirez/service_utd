@@ -57,7 +57,8 @@ public:
 
     string ss;
     string topic;
-    string prefix = "/uav";
+    string prefix;
+    nh_.param<std::string>("prefix", prefix, "/uav");
     /// List of UAVs that we transmit information to
     vector<int> connlist;
     nh_.getParam("UAVconnectivity", connlist);

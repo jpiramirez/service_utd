@@ -8,6 +8,7 @@
 #include <ros/ros.h>
 #include <std_msgs/Bool.h>
 #include <geometry_msgs/PoseStamped.h>
+#include <nav_msgs/Odometry.h>
 #include <service_utd/Markers.h>
 #include <eigen3/Eigen/Dense>
 #include <eigen3/Eigen/Geometry>
@@ -24,17 +25,24 @@ class droneOdom
   float x, y, z;
   ros::Time ptime, ctime;
   ros::Duration d;
-  geometry_msgs::PoseStamped odom, tgtodom;
+  geometry_msgs::PoseStamped odom;
+  nav_msgs::Odometry tgtodom;
   Eigen::Matrix3Xd dronepoints;
   int mcount;
-  
+  std::string dronename;
+  bool brtarget;
+
 public:
   droneOdom()
   {
-    odom_pub = nh_.advertise<geometry_msgs::PoseStamped>("/ardrone/pose", 2);
-    tgt_pub = nh_.advertise<geometry_msgs::PoseStamped>("/target/pose", 2);
+    odom_pub = nh_.advertise<geometry_msgs::PoseStamped>("ardrone/pose", 2);
+    tgt_pub = nh_.advertise<nav_msgs::Odometry>("/target/pose", 2);
     navdata_sub = nh_.subscribe("/vicon/markers", 2, &droneOdom::navdataCallback, this);
+
+    nh_.param<std::string>("dronename", dronename, "ardrone2");
+    nh_.param("broadcast_target", brtarget, true);
     ROS_INFO_STREAM("Zero point initialized.");
+    ROS_INFO_STREAM("Providing odometry for drone: " << dronename);
     x = 0.0;
     y = 0.0;
     z = 0.0;
@@ -119,14 +127,14 @@ public:
       Vector3d front, back, left, right;
       Vector3d torig, tfront, tleft, tright;
       Eigen::Matrix3Xd dronecurpos;
-      
-      // This code assumes that the order in which the markers arrive is 
+
+      // This code assumes that the order in which the markers arrive is
       // front    back    left    right
       bool dronevisible = true;
 
       for(int i=0; i < msg->markers.size(); i++)
       {
-          if(msg->markers[i].subject_name.compare("ardrone2") == 0)
+          if(msg->markers[i].subject_name.compare(dronename) == 0)
           {
               if(msg->markers[i].marker_name.compare("front") == 0)
                   front << 1e-3*msg->markers[i].translation.x, 1e-3*msg->markers[i].translation.y, \
@@ -148,7 +156,7 @@ public:
               if(msg->markers[i].marker_name.compare("front") == 0)
                   tfront << 1e-3*msg->markers[i].translation.x, 1e-3*msg->markers[i].translation.y, \
                           1e-3*msg->markers[i].translation.z;
-              if(msg->markers[i].marker_name.compare("origin") == 0)
+              if(msg->markers[i].marker_name.compare("back") == 0)
                   torig << 1e-3*msg->markers[i].translation.x, 1e-3*msg->markers[i].translation.y, \
                           1e-3*msg->markers[i].translation.z;
               if(msg->markers[i].marker_name.compare("left") == 0)
@@ -172,25 +180,25 @@ public:
               dronepoints << front(0), back(0), left(0), right(0),
                              front(1), back(1), left(1), right(1),
                              front(2), back(2), left(2), right(2);
-              Eigen::Matrix3Xd originp;
-              originp.resize(3, 4);
-              originp << front(0), front(0), front(0), front(0),
-                         front(1), front(1), front(1), front(1),
-                         front(2), front(2), front(2), front(2);
+              Eigen::Matrix3Xd originp = Eigen::Matrix3Xd::Zero(3, 4);
+              //originp.resize(3, 4);
+              // originp << front(0), front(0), front(0), front(0),
+              //            front(1), front(1), front(1), front(1),
+              //            front(2), front(2), front(2), front(2);
               dronepoints = dronepoints - originp;
           }
 
           Eigen::Affine3d T = Find3DAffineTransform(dronepoints, dronecurpos);
           q = T.rotation();
       }
-      
+
       Vector3d vec1 = front - back;
       Vector3d ivec(1, 0, 0);
       Vector3d flatv(vec1(0), vec1(1), 0);
       float cosyaw = ivec.dot(flatv)/flatv.norm();
       Vector3d crossv = ivec.cross(flatv);
       double yaw = copysign(acos(cosyaw), crossv(2));
-      
+
       odom.header.seq++;
       ctime = ros::Time::now();
       odom.header.stamp = ctime;
@@ -218,12 +226,13 @@ public:
       yaw = copysign(acos(cosyaw), crossv(2));
 
       tgtodom.header.stamp = ctime;
-      tgtodom.pose.position.x = torig[0];
-      tgtodom.pose.position.y = torig[1];
-      tgtodom.pose.position.z = torig[2];
-      tgtodom.pose.orientation.w = cos(yaw/2.0);
-      tgtodom.pose.orientation.z = sin(yaw/2.0);
-      if(dronevisible)
+      tgtodom.header.frame_id = "map";
+      tgtodom.pose.pose.position.x = torig[0];
+      tgtodom.pose.pose.position.y = torig[1];
+      tgtodom.pose.pose.position.z = torig[2];
+      tgtodom.pose.pose.orientation.w = cos(yaw/2.0);
+      tgtodom.pose.pose.orientation.z = sin(yaw/2.0);
+      if(dronevisible && brtarget)
         tgt_pub.publish(tgtodom);
 
       if(dronevisible)

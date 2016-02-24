@@ -109,6 +109,10 @@ class pathPlanner
   ros::Time startT, endT;
   ros::Duration simlength;
 
+  std::string prefix;
+
+  int horizonparam;
+
 public:
   pathPlanner()
   {
@@ -119,7 +123,7 @@ public:
     pose_sub = nh_.subscribe("ardrone/pose", 2, &pathPlanner::Callback, this);
     object_sub = nh_.subscribe("objectdetected", 2, &pathPlanner::detectionCallback, this);
     tgtpose_sub = nh_.subscribe("objectpose", 1, &pathPlanner::targetPositionCallback, this);
-    softmeas_sub = nh_.subscribe("ground_obs", 1, &pathPlanner::softMeasurementCallback, this);
+    softmeas_sub = nh_.subscribe("/ground_obs", 1, &pathPlanner::softMeasurementCallback, this);
     //pclpub = nh_.advertise<PointCloud>("particles", 1);
 
     vector<int> connlist;
@@ -128,7 +132,8 @@ public:
     nh_.getParam("UAVconnectivity", senslist);
     string ss;
     string topic;
-    string prefix = "/uav";
+    nh_.param<std::string>("prefix", prefix, "/uav");
+    nh_.param("plan_length", horizonparam, 5);
     for(int i=0; i < connlist.size(); i++)
     {
         cout << "UAV " << connlist[i] << endl;
@@ -414,6 +419,17 @@ public:
           if(targetFound)
               isUAVinGraph = false;
           targetFound = false;
+
+          if(batchSimulation)
+          {
+            endT = ros::Time::now();
+            simlength = endT - startT;
+            if(simlength.toSec() > 1000)
+            {
+              ROS_INFO_STREAM("Declaring target lost.");
+              ros::shutdown();
+            }
+          }
       }
 
       if(targetFound)
@@ -914,8 +930,10 @@ public:
           {
               Point2d uavcoord = Point2d(otherUAVst[j][0], otherUAVst[j][1]);
 
-
-              estimRad.push_back(timeToDest*norm(otherUAVvel[j]));
+              double radtemp = 2*timeToDest*norm(otherUAVvel[j]);
+              if(radtemp < 0.5)
+                radtemp = 0.5;
+              estimRad.push_back(radtemp);
               if(norm(ownVel) < 1e-6)
                   estimRad[j] = collisionRadius;
 //              cout << "estimRad " << estimRad[j] << endl;
@@ -926,7 +944,8 @@ public:
 
 //          weight[k] = um->wayln[k]/(1.0+sc) + coll;
           if(sc < 1.0)
-            weight[k] = 1-sc + coll;
+            // weight[k] = 1-sc + coll;
+            weight[k] = 1.0/fabs(sc-0.5) + coll;
           else
             weight[k] = coll;
           wt.push_back(weight[k]);
@@ -1001,7 +1020,7 @@ public:
       vector<vertex_descriptor> validNodes;
 
       // Lookahead horizon
-      int numTravEdges = 5;
+      int numTravEdges = horizonparam;
 
       for(tie(vi, vend) = vertices(G); vi!=vend; ++vi)
       {
@@ -1127,7 +1146,7 @@ public:
               wp_msg.y = tgtestim.y;
               cout << "STATE: Target detected, following it." << endl;
           }
-          else if(norm(Point2d(x,y) - um->coord[idx]) < 0.5)
+          else if(norm(Point2d(x,y) - um->coord[idx]) < 0.1)
           {
 
               wp_msg.x = pt.x;
@@ -1140,10 +1159,10 @@ public:
           switch(cruiseAltitude)
           {
           case(1):
-              wp_msg.z = baseAltitude + myId;
+              wp_msg.z = baseAltitude + myId - 1;
               break;
           case(-1):
-              wp_msg.z = baseAltitude + myId;
+              wp_msg.z = baseAltitude + myId - 1;
               break;
           default:
               wp_msg.z = baseAltitude;

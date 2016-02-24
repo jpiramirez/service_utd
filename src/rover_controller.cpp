@@ -108,9 +108,11 @@ public:
       x = msg->pose.pose.position.x;
       y = msg->pose.pose.position.y;
       z = msg->pose.pose.position.z;
-      theta = 2.0*asin(msg->pose.pose.orientation.z);
+      geometry_msgs::Quaternion q = msg->pose.pose.orientation;
+      theta = atan2(2*(q.w*q.z+q.x*q.y), 1-2*(q.y*q.y+q.z*q.z));
+      // theta = 2.0*asin(msg->pose.pose.orientation.z);
 
-      float KPx = 0.4; //defaults 0.1 0.1 0.2 0.2 0.2 0.4
+      float KPx = 0.2; //defaults 0.1 0.1 0.2 0.2 0.2 0.4
       float KPy = 0.4;
       float KPz = 0.8;
 
@@ -130,7 +132,7 @@ public:
 
           goal = um->coord[cnode.first];
           vg = goal-Point2d(x, y);
-          if(norm(vg) < 1e-3)
+          if(norm(vg) < 1e-2)
               isRoverOnMap = true;
       }
       else
@@ -151,26 +153,34 @@ public:
 
       }
 
+      ROS_INFO_STREAM("Traveling to " << goal);
 
       vg = goal-Point2d(x, y);
-      anglediff = atan2(vg.y, vg.x) - theta;
-      while(fabs(anglediff) > 2*M_PI)
-      {
-          if(anglediff < 0)
-              anglediff += 2*M_PI;
-          else
-              anglediff -= 2*M_PI;
-      }
-      if(fabs(anglediff) > 1e-1)
-      {
-          control.linear.x = 0;
+      anglediff = cos(theta)*vg.x + sin(theta)*vg.y;
+      anglediff /= sqrt(vg.x*vg.x + vg.y*vg.y);
+      anglediff = acos(anglediff);
+      // Getting the sign of vg cross vr
+      anglediff = copysign(anglediff, cos(theta)*vg.y-sin(theta)*vg.x);
+      cout << "Anglediff " << anglediff << endl;
+      cout << "Theta " << theta << endl;
+      cout << "Phi " << atan2(vg.y, vg.x) << endl;
+      // while(fabs(anglediff) > M_PI)
+      // {
+      //     if(anglediff < -M_PI)
+      //         anglediff += 2*M_PI;
+      //     else
+      //         anglediff -= 2*M_PI;
+      // }
+      // if(fabs(anglediff) > 5e-2)
+      // {
+          // control.linear.x = 0;
           control.angular.z = Ky*anglediff;
-      }
-      else
-      {
-          control.angular.z = 0;
+      // }
+      // else
+      // {
+          // control.angular.z = 0;
           control.linear.x = KPx*norm(vg);
-      }
+      // }
 
       if(control.linear.x > 0.2)
           control.linear.x = 0.2;

@@ -1,0 +1,95 @@
+<?xml version="1.0"?>
+
+<!-- The ardrone node has to be running and the downward camera selected -->
+
+<launch>
+  <!--node pkg="vicon_bridge" type="vicon_bridge" name="vicon" output="screen">
+		<param name="stream_mode" value="ClientPull" type="str" />
+		<param name="datastream_hostport" value="192.168.45.101:801" type="str" />
+		<param name="tf_ref_frame_id" value="/world" type="str" />
+  </node-->
+
+  <group ns="target">
+    <param name="mapname" value="$(find service_utd)/squaremap.yml" />
+    <param name="odometry_topic" value="/target/pose" />
+    <node name="rover_controller" pkg="service_utd" type="rover_controller" output="screen">
+      <remap from="cmd_vel" to="/RosAria/cmd_vel" />
+    </node>
+    <rosparam param="ugs/x">[0,1]</rosparam>
+    <rosparam param="ugs/y">[0,1]</rosparam>
+    <param name="detection_radius" value="1" />
+    <param name="comm_radius" value="2" />
+    <param name="alpha" value="0.95" />
+    <param name="beta" value="0.01" />
+    <rosparam param="UAVconnectivity">[1,2]</rosparam>
+    <node name="groundsensors" pkg="service_utd" type="groundsensors" output="screen" />
+  </group>
+
+<group ns="uav1">
+  <param name="dronename" value="uav1" />
+  <param name="broadcast_target" value="true" />
+  <node name="drone_odom" pkg="service_utd" type="drone_odom" respawn="true"
+    output="screen" />
+
+  <param name="targetdetect/camera_info_url" value="$(find service_utd)/calibration.yml" />
+  <param name="targetdetect/color" value="0 255 0" type="str" />
+  <node name="targetdetector" pkg="service_utd" type="targetdetector" respawn="true" >
+    <remap from="image" to="ardrone/bottom/image_raw" />
+  </node>
+
+  <rosparam param="drone_setpoint/gains">[0.2,0.2,0.4,0.4,0.4,0.6,0.8]</rosparam>
+  <node name="drone_setpoint" pkg="service_utd" type="drone_setpoint" respawn="true" output="screen" />
+
+  <param name="waypoints/x" value="-2 2 2 -2 -2 2" />
+  <param name="waypoints/y" value="1.5 1.5 0 0 -1.5 -1.5" />
+  <param name="waypoints/z" value="2 2 2 2 2 2" />
+  <param name="waypointNav" value="false" type="bool" />
+  <param name="alpha" value="0.95" />
+  <param name="beta" value="0.01" />
+  <param name="detection_radius" value="10" />
+  <param name="collision_radius" value="2.0" />
+  <param name="num_particles" value="4000" />
+  <param name="mapname" value="$(find service_utd)/squaremap.yml" />
+  <rosparam param="UAVdetectability">[2]</rosparam>
+  <rosparam param="UAVconnectivity">[2]</rosparam>
+  <param name="base_altitude" value="1" />
+  <param name="batchsimulation" value="false" />
+  <param name="memsize" value="1" />
+  <param name="prefix" value="/ardrone" />
+  <node name="pathplanner" pkg="service_utd" type="pathplanner" required="true" output="screen"/>
+</group>
+
+<group ns="uav2">
+  <param name="dronename" value="uav2" />
+  <param name="broadcast_target" value="false" />
+  <node name="drone_odom" pkg="service_utd" type="drone_odom" respawn="true"
+    output="screen" />
+
+  <param name="targetdetect/camera_info_url" value="$(find service_utd)/calibration.yml" />
+  <param name="targetdetect/color" value="0 255 0" type="str" />
+  <node name="targetdetector" pkg="service_utd" type="targetdetector" respawn="true" >
+    <remap from="image" to="ardrone/bottom/image_raw" />
+  </node>
+
+  <rosparam param="drone_setpoint/gains">[0.2,0.2,0.4,0.4,0.4,0.6,0.8]</rosparam>
+  <node name="drone_setpoint" pkg="service_utd" type="drone_setpoint" respawn="true" output="screen" />
+
+  <param name="waypoints/x" value="-2 2 2 -2 -2 2" />
+  <param name="waypoints/y" value="1.5 1.5 0 0 -1.5 -1.5" />
+  <param name="waypoints/z" value="2 2 2 2 2 2" />
+  <param name="waypointNav" value="false" type="bool" />
+  <param name="alpha" value="0.95" />
+  <param name="beta" value="0.01" />
+  <param name="detection_radius" value="10" />
+  <param name="collision_radius" value="2.0" />
+  <param name="num_particles" value="4000" />
+  <param name="mapname" value="$(find service_utd)/squaremap.yml" />
+  <rosparam param="UAVdetectability">[1]</rosparam>
+  <rosparam param="UAVconnectivity">[1]</rosparam>
+  <param name="base_altitude" value="1" />
+  <param name="batchsimulation" value="false" />
+  <param name="memsize" value="1" />
+  <param name="prefix" value="/ardrone" />
+  <node name="pathplanner" pkg="service_utd" type="pathplanner" required="true" output="screen"/>
+</group>
+</launch>

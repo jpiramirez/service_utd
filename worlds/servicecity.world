@@ -3,8 +3,8 @@
   <world name="default">
 	<physics type='ode'>
        <max_step_size>0.004000</max_step_size>
-       <real_time_factor>1.000000</real_time_factor>
-       <real_time_update_rate>250.000000</real_time_update_rate>
+       <real_time_factor>0.800000</real_time_factor>
+       <real_time_update_rate>200.000000</real_time_update_rate>
 	   <!--real_time_update_rate>0.000000</real_time_update_rate-->
        <gravity>0.000000 0.000000 -9.800000</gravity>
 	   <ode>
@@ -22,7 +22,7 @@
     <include>
       <uri>model://ground_plane</uri>
     </include>
-    
+
 	<model name="ciudad">
       <pose>0 0 0  0 0 0</pose>
       <static>true</static>

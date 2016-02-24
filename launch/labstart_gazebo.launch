@@ -8,8 +8,8 @@
 <include file="$(find service_utd)/launch/spawn_quadrotor_with_downward_cam.launch">
   <arg name="name" value="uav1" />
   <arg name="tf_prefix" value="uav1" />
-  <arg name="x" value="-1.0" />
-  <arg name="y" value="24.362551" />
+  <arg name="x" value="-2" />
+  <arg name="y" value="-2" />
   <arg name="z" value="0.0" />
 </include>
 </group>
@@ -18,31 +18,12 @@
 <include file="$(find service_utd)/launch/spawn_quadrotor_with_downward_cam.launch">
   <arg name="name" value="uav2" />
   <arg name="tf_prefix" value="uav2" />
-  <arg name="x" value="42.280787" />
-  <arg name="y" value="38.019486" />
+  <arg name="x" value="2" />
+  <arg name="y" value="2" />
   <arg name="z" value="0.0" />
 </include>
 </group>
 
-<group ns="uav3">
-<include file="$(find service_utd)/launch/spawn_quadrotor_with_downward_cam.launch">
-  <arg name="name" value="uav3" />
-  <arg name="tf_prefix" value="uav3" />
-  <arg name="x" value="41.764476" />
-  <arg name="y" value="12.914353" />
-  <arg name="z" value="0.0" />
-</include>
-</group>
-
-<group ns="uav4">
-<include file="$(find service_utd)/launch/spawn_quadrotor_with_downward_cam.launch">
-  <arg name="name" value="uav4" />
-  <arg name="tf_prefix" value="uav4" />
-  <arg name="x" value="5.969434" />
-  <arg name="y" value="-1.0" />
-  <arg name="z" value="0.0" />
-</include>
-</group>
 
 <group ns="target">
   <!-- Load the URDF into the ROS Parameter Server -->
@@ -50,8 +31,8 @@
 		command="$(find xacro)/xacro.py '$(find p3dx_description)/urdf/pioneer3dx.xacro'" />
     <!-- Run a python script to the send a service call to gazebo_ros to spawn
   		a URDF robot -->
-  <node name="urdf_spawner" pkg="gazebo_ros" type="spawn_model"
-  		respawn="false" output="screen" args="-urdf -model p3dx -param robot_description" />
+  <!--node name="urdf_spawner" pkg="gazebo_ros" type="spawn_model"
+  		respawn="false" output="screen" args="-urdf -model p3dx -param robot_description" /-->
   <!-- Just in case we want to replace the Pioneer with a Turtlebot -->
   <!--include file="$(find turtlebot_gazebo)/launch/includes/kobuki.launch.xml">
     <arg name="base" value="kobuki"/>
