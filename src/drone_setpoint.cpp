@@ -36,7 +36,7 @@ class droneController
   float perrx, perry, perrz;
   float KPx, KPy, KPz, KDx, KDy, KDz, Ky;
 
-  
+
 public:
   droneController()
   {
@@ -96,8 +96,8 @@ public:
       d = ctime - ptime;
       double t = d.toSec();
 
-     // if(t < 0.02)
-      //    return;
+     if(t < 0.02)
+         return;
 
       x = msg->pose.position.x;
       y = msg->pose.position.y;
@@ -156,7 +156,7 @@ public:
       pah = ah;
 
   }
-  
+
   void setpointCallback(const geometry_msgs::Vector3::ConstPtr& msg)
   {
       setx = msg->x;

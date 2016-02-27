@@ -400,17 +400,17 @@ public:
           if(batchSimulation)
           {
               ROS_INFO_STREAM("Shutting down the node (batch simulations in progress)");
-              endT = ros::Time::now();
-              simlength = endT - startT;
-              time_t tt;
-              time(&tt);
-              string stt = boost::lexical_cast<string>(tt);
-              stt = stt + ".txt";
-              ofstream fs;
-              fs.open(stt.c_str());
-              fs << simlength.toSec() << endl;
-              fs.close();
-              ROS_INFO_STREAM("Acquisition time recorded as " << stt);
+              // endT = ros::Time::now();
+              // simlength = endT - startT;
+              // time_t tt;
+              // time(&tt);
+              // string stt = boost::lexical_cast<string>(tt);
+              // stt = stt + ".txt";
+              // ofstream fs;
+              // fs.open(stt.c_str());
+              // fs << simlength.toSec() << endl;
+              // fs.close();
+              // ROS_INFO_STREAM("Acquisition time recorded as " << stt);
               ros::shutdown();
           }
       }
@@ -420,16 +420,16 @@ public:
               isUAVinGraph = false;
           targetFound = false;
 
-          if(batchSimulation)
-          {
-            endT = ros::Time::now();
-            simlength = endT - startT;
-            if(simlength.toSec() > 1000)
-            {
-              ROS_INFO_STREAM("Declaring target lost.");
-              ros::shutdown();
-            }
-          }
+          // if(batchSimulation)
+          // {
+          //   endT = ros::Time::now();
+          //   simlength = endT - startT;
+          //   if(simlength.toSec() > 1000)
+          //   {
+          //     ROS_INFO_STREAM("Declaring target lost.");
+          //     ros::shutdown();
+          //   }
+          // }
       }
 
       if(targetFound)
@@ -931,11 +931,11 @@ public:
               Point2d uavcoord = Point2d(otherUAVst[j][0], otherUAVst[j][1]);
 
               double radtemp = 2*timeToDest*norm(otherUAVvel[j]);
-              if(radtemp < 0.5)
-                radtemp = 0.5;
+              if(radtemp < collisionRadius || norm(ownVel) < 1e-6)
+                radtemp = collisionRadius;
               estimRad.push_back(radtemp);
-              if(norm(ownVel) < 1e-6)
-                  estimRad[j] = collisionRadius;
+              // if(norm(ownVel) < 1e-6)
+                  // estimRad[j] = collisionRadius;
 //              cout << "estimRad " << estimRad[j] << endl;
 
               if(lineSegmentCollision(uavcoord, estimRad[j], ls, le))
@@ -944,8 +944,8 @@ public:
 
 //          weight[k] = um->wayln[k]/(1.0+sc) + coll;
           if(sc < 1.0)
-            // weight[k] = 1-sc + coll;
-            weight[k] = 1.0/fabs(sc-0.5) + coll;
+            weight[k] = 1.0-sc + coll;
+            // weight[k] = 1.0/fabs(sc-0.5) + coll;
           else
             weight[k] = coll;
           wt.push_back(weight[k]);
@@ -1159,10 +1159,10 @@ public:
           switch(cruiseAltitude)
           {
           case(1):
-              wp_msg.z = baseAltitude + myId - 1;
+              wp_msg.z = baseAltitude;// + myId - 1;
               break;
           case(-1):
-              wp_msg.z = baseAltitude + myId - 1;
+              wp_msg.z = baseAltitude;// + myId - 1;
               break;
           default:
               wp_msg.z = baseAltitude;

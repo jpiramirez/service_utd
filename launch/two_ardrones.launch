@@ -7,7 +7,7 @@
    args="-ip 192.168.0.10" output="screen" required="true" />
 
   <node name="joy_node" pkg="joy" type="joy_node" respawn="true" output="screen">
-    <param name="dev" value="/dev/input/js0" />
+    <param name="dev" value="/dev/input/js1" />
   </node>
   <node name="drone_joystick" pkg="service_utd" type="joy2drone.py" respawn="true">
     <remap from="/cmd_vel" to="cmd_vel" />
@@ -19,8 +19,8 @@
    args="-ip 192.168.0.11" output="screen" required="true" />
 
   <node name="joy_node" pkg="joy" type="joy_node" respawn="true" output="screen">
-   <param name="dev" value="/dev/input/js1" />
-  </node>
+   <param name="dev" value="/dev/input/js0" />
+ </node>
   <node name="drone_joystick" pkg="service_utd" type="joy2drone.py" respawn="true">
     <remap from="/cmd_vel" to="cmd_vel" />
   </node>

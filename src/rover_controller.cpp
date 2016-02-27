@@ -93,6 +93,9 @@ public:
 
   ~roverController()
   {
+      control.linear.x = 0;
+      control.angular.z = 0;
+      ctrl_pub.publish(control);
       delete um;
   }
 
@@ -120,7 +123,7 @@ public:
       float KDy = 0.8;
       float KDz = 1.2;
 
-      float Ky = 1;
+      float Ky = 2;
 
       double anglediff = 0.0;
       Point2d vg;
@@ -153,7 +156,7 @@ public:
 
       }
 
-      ROS_INFO_STREAM("Traveling to " << goal);
+
 
       vg = goal-Point2d(x, y);
       anglediff = cos(theta)*vg.x + sin(theta)*vg.y;
@@ -161,9 +164,7 @@ public:
       anglediff = acos(anglediff);
       // Getting the sign of vg cross vr
       anglediff = copysign(anglediff, cos(theta)*vg.y-sin(theta)*vg.x);
-      cout << "Anglediff " << anglediff << endl;
-      cout << "Theta " << theta << endl;
-      cout << "Phi " << atan2(vg.y, vg.x) << endl;
+
       // while(fabs(anglediff) > M_PI)
       // {
       //     if(anglediff < -M_PI)
