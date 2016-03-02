@@ -15,10 +15,10 @@
     <node name="rover_controller" pkg="service_utd" type="rover_controller" output="screen">
       <remap from="cmd_vel" to="/RosAria/cmd_vel" />
     </node>
-    <rosparam param="ugs/x">[0,1]</rosparam>
-    <rosparam param="ugs/y">[0,1]</rosparam>
-    <param name="detection_radius" value="1" />
-    <param name="comm_radius" value="2" />
+    <rosparam param="ugs/x">[0.75,0.75,-0.75,-0.75,0]</rosparam>
+    <rosparam param="ugs/y">[0.75,-0.75,0.75,-0.75,0]</rosparam>
+    <param name="detection_radius" value="0.5" />
+    <param name="comm_radius" value="0.5" />
     <param name="alpha" value="0.95" />
     <param name="beta" value="0.01" />
     <rosparam param="UAVconnectivity">[1,2]</rosparam>
@@ -54,8 +54,9 @@
   <rosparam param="UAVconnectivity">[2]</rosparam>
   <param name="base_altitude" value="1" />
   <param name="batchsimulation" value="false" />
-  <param name="memsize" value="1" />
+  <param name="memsize" value="1000" />
   <param name="prefix" value="/uav" />
+  <param name="plan_length" value="5" />
   <node name="pathplanner" pkg="service_utd" type="pathplanner" required="true" output="screen"/>
 </group>
 
@@ -88,8 +89,9 @@
   <rosparam param="UAVconnectivity">[1]</rosparam>
   <param name="base_altitude" value="1" />
   <param name="batchsimulation" value="false" />
-  <param name="memsize" value="1" />
+  <param name="memsize" value="1000" />
   <param name="prefix" value="/uav" />
+  <param name="plan_length" value="5" />
   <node name="pathplanner" pkg="service_utd" type="pathplanner" required="true" output="screen"/>
 </group>
 </launch>

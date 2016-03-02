@@ -51,7 +51,9 @@ class UGS
 public:
   UGS()
   {
-    pose_sub = nh_.subscribe("p3dx/base_pose_ground_truth", 2, &UGS::Callback, this);
+    string odomtopic;
+    nh_.param<std::string>("odometry_topic", odomtopic, "p3dx/base_pose_ground_truth");
+    pose_sub = nh_.subscribe(odomtopic, 2, &UGS::Callback, this);
     //    point_sub = nh_.subscribe("ardrone/setpoint", 2, &UGS::setpointCallback, this);
     ROS_INFO_STREAM("UGS initialized.");
 
@@ -104,6 +106,8 @@ public:
           sm.ul.y = ugsy[i] + detectrad/2.0;
           sm.br.x = ugsx[i] - detectrad/2.0;
           sm.br.y = ugsy[i] - detectrad/2.0;
+          sm.alpha = alpha;
+          sm.beta = beta;
           sm.measurement = false;
           ROS_INFO_STREAM("UGS " << i << " located at (" << ugsx[i] << "," << \
                           ugsy[i] << ")");
@@ -122,9 +126,8 @@ public:
     bool detectRover(int sensor)
     {
       bool detect = false;
-
       if(sqrt(pow(x-ugsx[sensor], 2.0) + pow(y-ugsy[sensor], 2.0)) < detectrad)
-      detect = true;
+        detect = true;
       double die = gsl_rng_uniform(RNG);
       if(detect)
       {
@@ -163,8 +166,22 @@ public:
           sm.ul.y = ugsy[i] + detectrad/2.0;
           sm.br.x = ugsx[i] - detectrad/2.0;
           sm.br.y = ugsy[i] - detectrad/2.0;
+          sm.alpha = alpha;
+          sm.beta = beta;
           sm.measurement = true;
         }
+        else
+        {
+          sm.header.stamp = ros::Time::now();
+          sm.ul.x = ugsx[i] + detectrad/2.0;
+          sm.ul.y = ugsy[i] + detectrad/2.0;
+          sm.br.x = ugsx[i] - detectrad/2.0;
+          sm.br.y = ugsy[i] - detectrad/2.0;
+          sm.alpha = alpha;
+          sm.beta = beta;
+          sm.measurement = false;
+        }
+        smvec[i] = sm;
       }
     }
 

@@ -58,6 +58,7 @@ class pathPlanner
   ros::Publisher ownpf_pub;
 
   vector<Vec3d> otherUAVst, otherUAVpst, otherUAVvel;
+  vector<bool> otherUAVvisible;
   vector<ros::Time> pestim;
   std::map<int, int> UAVid;
   std::map<int, int> UAVsense;
@@ -123,7 +124,7 @@ public:
     pose_sub = nh_.subscribe("ardrone/pose", 2, &pathPlanner::Callback, this);
     object_sub = nh_.subscribe("objectdetected", 2, &pathPlanner::detectionCallback, this);
     tgtpose_sub = nh_.subscribe("objectpose", 1, &pathPlanner::targetPositionCallback, this);
-    softmeas_sub = nh_.subscribe("/ground_obs", 1, &pathPlanner::softMeasurementCallback, this);
+    softmeas_sub = nh_.subscribe("ground_obs", 1, &pathPlanner::softMeasurementCallback, this);
     //pclpub = nh_.advertise<PointCloud>("particles", 1);
 
     vector<int> connlist;
@@ -146,6 +147,7 @@ public:
         otherUAVst.push_back(Vec3d(0,0,0));
         otherUAVpst.push_back(Vec3d(0,0,0));
         otherUAVvel.push_back(Vec3d(0,0,0));
+        otherUAVvisible.push_back(false);
         pestim.push_back(ros::Time::now());
     }
 
@@ -221,7 +223,7 @@ public:
 
 //    timer = nh_.createTimer(ros::Duration(0.2), &pathPlanner::computeWaypoint, this);
     timerpf = nh_.createTimer(ros::Duration(5), &pathPlanner::broadcastParticles, this);
-    timer = nh_.createTimer(ros::Duration(0.25), &pathPlanner::pathPlanOverMap, this);
+    timer = nh_.createTimer(ros::Duration(0.5), &pathPlanner::pathPlanOverMap, this);
     namedWindow("pdf");
 
     ptime = ros::Time::now();
@@ -304,7 +306,9 @@ public:
       double sBeta = msg->beta;
       Point2d ul(msg->ul.x, msg->ul.y);
       Point2d br(msg->br.x, msg->br.y);
+      ros::Duration d = ros::Time::now()-t;
 
+      ROS_INFO_STREAM("Processing OOSM " << d.toSec() << " seconds old");
       pf->processOOSM(*um, ul, br, msg->measurement, t, sAlpha, sBeta);
   }
 
@@ -400,17 +404,17 @@ public:
           if(batchSimulation)
           {
               ROS_INFO_STREAM("Shutting down the node (batch simulations in progress)");
-              // endT = ros::Time::now();
-              // simlength = endT - startT;
-              // time_t tt;
-              // time(&tt);
-              // string stt = boost::lexical_cast<string>(tt);
-              // stt = stt + ".txt";
-              // ofstream fs;
-              // fs.open(stt.c_str());
-              // fs << simlength.toSec() << endl;
-              // fs.close();
-              // ROS_INFO_STREAM("Acquisition time recorded as " << stt);
+              endT = ros::Time::now();
+              simlength = endT - startT;
+              time_t tt;
+              time(&tt);
+              string stt = boost::lexical_cast<string>(tt);
+              stt = stt + ".txt";
+              ofstream fs;
+              fs.open(stt.c_str());
+              fs << simlength.toSec() << endl;
+              fs.close();
+              ROS_INFO_STREAM("Acquisition time recorded as " << stt);
               ros::shutdown();
           }
       }
@@ -479,6 +483,13 @@ public:
         distanceToUAV += pow(msg->pose.position.z-z, 2.0);
         distanceToUAV = sqrt(distanceToUAV);
 
+        if(distanceToUAV > detectionRadius)
+        {
+          otherUAVvisible[callerId] = false;
+          return;
+        }
+
+        otherUAVvisible[callerId] = true;
 
         otherUAVst[callerId] = Vec3d(msg->pose.position.x, msg->pose.position.y, msg->pose.position.z);
 
@@ -928,6 +939,8 @@ public:
           le = um->coord[um->elist[k].y];
           for(int j=0; j < otherUAVst.size(); j++)
           {
+              if(otherUAVvisible[j] == false)
+                continue;
               Point2d uavcoord = Point2d(otherUAVst[j][0], otherUAVst[j][1]);
 
               double radtemp = 2*timeToDest*norm(otherUAVvel[j]);
@@ -1218,6 +1231,8 @@ public:
 
       for(int j=0; j < otherUAVst.size(); j++)
       {
+          if(otherUAVvisible[j] == false)
+            continue;
           pt = Point2d(otherUAVst[j][0], otherUAVst[j][1]);
           uv1 = um->xy2uv(visimagesc.rows, visimagesc.cols, pt);
           int rad = estimRad[j]*visimagesc.rows/(um->ne.x - um->sw.x);

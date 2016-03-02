@@ -164,6 +164,8 @@ public:
       anglediff = acos(anglediff);
       // Getting the sign of vg cross vr
       anglediff = copysign(anglediff, cos(theta)*vg.y-sin(theta)*vg.x);
+      if(isnan(anglediff))
+        anglediff = 0.0;
 
       // while(fabs(anglediff) > M_PI)
       // {

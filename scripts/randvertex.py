@@ -60,4 +60,5 @@ coord = [   (0.000000,  25.362551),
 
 ridx = random.randint(0,56)
 #print "-x " + str(coord[ridx][0]) + " -y " + str(coord[ridx][1]),
-print "{ x: " + str(coord[ridx][0]) + " , y: " + str(coord[ridx][1]) + " , z: 0.0 }",
+#print "{ x: " + str(coord[ridx][0]) + " , y: " + str(coord[ridx][1]) + " , z: 0.0 }",
+print "[" + str(coord[ridx][0]) + "," + str(coord[ridx][1]) + ",0,0]" ,

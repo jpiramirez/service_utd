@@ -133,11 +133,13 @@ include_directories(
 add_executable(vispose src/vispose.cpp src/vistarget.cpp)
 add_executable(colorpose src/colorpose.cpp src/colortarget.cpp)
 add_executable(targetdetector src/targetdetector.cpp)
+add_executable(fakedetector src/fakedetector.cpp)
 add_executable(cardetector src/cardetector.cpp)
 add_executable(unittest src/unittest.cpp src/targetstateestimator.cpp src/particlefilter.cpp src/urbanmap.cpp src/inh_particlefilter.cpp)
 add_executable(drone_odom src/drone_odom.cpp)
 add_executable(drone_setpoint src/drone_setpoint.cpp)
 add_executable(rover_controller src/rover_controller.cpp src/urbanmap.cpp)
+add_executable(fakerover src/fakerover.cpp)
 add_executable(tf2posestamped src/tf2posestamped.cpp)
 add_executable(infocontroller src/infocontroller.cpp src/targetstateestimator.cpp)
 add_executable(ros2matlab src/ros2matlab.cpp)
@@ -152,11 +154,13 @@ add_executable(groundsensors src/groundsensors.cpp)
 add_dependencies(vispose service_utd_generate_messages_cpp)
 add_dependencies(colorpose service_utd_generate_messages_cpp)
 add_dependencies(targetdetector service_utd_generate_messages_cpp)
+add_dependencies(fakedetector service_utd_generate_messages_cpp)
 add_dependencies(cardetector service_utd_generate_messages_cpp)
 add_dependencies(unittest service_utd_generate_messages_cpp)
 add_dependencies(drone_odom service_utd_generate_messages_cpp)
 add_dependencies(drone_setpoint service_utd_generate_messages_cpp)
 add_dependencies(rover_controller service_utd_generate_messages_cpp)
+add_dependencies(fakerover service_utd_generate_messages_cpp)
 add_dependencies(infocontroller service_utd_generate_messages_cpp)
 add_dependencies(tf2posestamped service_utd_generate_messages_cpp)
 add_dependencies(ros2matlab service_utd_generate_messages_cpp)
@@ -178,6 +182,10 @@ target_link_libraries(targetdetector
    ${catkin_LIBRARIES} ${OpenCV_LIBS}
  )
 
+ target_link_libraries(fakedetector
+    ${catkin_LIBRARIES}
+  )
+
 target_link_libraries(cardetector
    ${catkin_LIBRARIES} ${OpenCV_LIBS}
  )
@@ -197,6 +205,10 @@ target_link_libraries(drone_setpoint
 target_link_libraries(rover_controller
    ${catkin_LIBRARIES} ${OpenCV_LIBS} ${GSL_LIBRARIES}
  )
+
+ target_link_libraries(fakerover
+    ${catkin_LIBRARIES} ${GSL_LIBRARIES}
+  )
 
 target_link_libraries(infocontroller
    ${catkin_LIBRARIES} ${OpenCV_LIBS}
