@@ -13,8 +13,10 @@
   <group ns="target">
 
 
-        <rosparam param="ugs/x">[26.8,27.96,34.04,20.24,25.71,11.29]</rosparam>
-				<rosparam param="ugs/y">[24,20.08,26.11,22.30,28.31,7.51]</rosparam>
+        <!--rosparam param="ugs/x">[26.8,27.96,34.04,20.24,25.71,11.29]</rosparam>
+				<rosparam param="ugs/y">[24,20.08,26.11,22.30,28.31,7.51]</rosparam-->
+        <rosparam param="ugs/x">[-100]</rosparam>
+				<rosparam param="ugs/y">[-100]</rosparam>
 				<param name="detection_radius" value="1" />
 				<param name="comm_radius" value="2" />
 				<param name="alpha" value="0.95" />
@@ -31,8 +33,9 @@
         <param name="targetdetect/camera_info_url" value="$(find service_utd)/calibration.yml" />
         <param name="tf_prefix" value="uav1" />
 
-        <node name="tf2posestamped" pkg="service_utd" type="tf2posestamped" respawn="true" />
-
+        <!--node name="tf2posestamped" pkg="service_utd" type="tf2posestamped" respawn="true" /-->
+        <rosparam param="droneinit">[-1.0,24.362551,0,0]</rosparam>
+        <node name="fakedrone" pkg="service_utd" type="fakedrone" output="screen" />
         <node name="joy_node" pkg="joy" type="joy_node" respawn="true"/>
         <node name="drone_joystick" pkg="service_utd" type="joy2drone.py" respawn="true" />
         <rosparam param="drone_setpoint/gains">[0.4,0.4,0.8,0.8,0.8,1.2,0.8]</rosparam>
@@ -53,7 +56,7 @@
         <param name="waypointNav" value="false" type="bool" />
         <param name="alpha" value="0.95" />
         <param name="beta" value="0.01" />
-        <param name="detection_radius" value="100" />
+        <param name="detection_radius" value="10" />
         <param name="collision_radius" value="10.0" />
         <param name="num_particles" value="4000" />
         <param name="mapname" value="$(find service_utd)/matlabmap.yml" />
@@ -75,8 +78,9 @@
         <param name="targetdetect/camera_info_url" value="$(find service_utd)/calibration.yml" />
         <param name="tf_prefix" value="uav2" />
 
-        <node name="tf2posestamped" pkg="service_utd" type="tf2posestamped" respawn="true" />
-
+        <!--node name="tf2posestamped" pkg="service_utd" type="tf2posestamped" respawn="true" /-->
+        <rosparam param="droneinit">[42.280787,38.019486,0,0]</rosparam>
+        <node name="fakedrone" pkg="service_utd" type="fakedrone" output="screen" />
         <node name="joy_node" pkg="joy" type="joy_node" respawn="true"/>
         <node name="drone_joystick" pkg="service_utd" type="joy2drone.py" respawn="true" />
         <rosparam param="drone_setpoint/gains">[0.4,0.4,0.8,0.8,0.8,1.2,0.8]</rosparam>
@@ -99,7 +103,7 @@
         <param name="waypointNav" value="false" type="bool" />
         <param name="alpha" value="0.95" />
         <param name="beta" value="0.01" />
-        <param name="detection_radius" value="100" />
+        <param name="detection_radius" value="10" />
         <param name="collision_radius" value="10.0" />
         <param name="num_particles" value="4000" />
         <param name="mapname" value="$(find service_utd)/matlabmap.yml" />
@@ -122,8 +126,9 @@
         <param name="targetdetect/camera_info_url" value="$(find service_utd)/calibration.yml" />
         <param name="tf_prefix" value="uav3" />
 
-        <node name="tf2posestamped" pkg="service_utd" type="tf2posestamped" respawn="true" />
-
+        <!--node name="tf2posestamped" pkg="service_utd" type="tf2posestamped" respawn="true" /-->
+        <rosparam param="droneinit">[41.764476,12.914353,0,0]</rosparam>
+        <node name="fakedrone" pkg="service_utd" type="fakedrone" output="screen" />
         <node name="joy_node" pkg="joy" type="joy_node" respawn="true"/>
         <node name="drone_joystick" pkg="service_utd" type="joy2drone.py" respawn="true" />
         <rosparam param="drone_setpoint/gains">[0.4,0.4,0.8,0.8,0.8,1.2,0.8]</rosparam>
@@ -146,7 +151,7 @@
         <param name="waypointNav" value="false" type="bool" />
         <param name="alpha" value="0.95" />
         <param name="beta" value="0.01" />
-        <param name="detection_radius" value="100" />
+        <param name="detection_radius" value="10" />
         <param name="collision_radius" value="10.0" />
         <param name="num_particles" value="4000" />
         <param name="mapname" value="$(find service_utd)/matlabmap.yml" />
@@ -168,8 +173,9 @@
         <param name="targetdetect/camera_info_url" value="$(find service_utd)/calibration.yml" />
         <param name="tf_prefix" value="uav4" />
 
-        <node name="tf2posestamped" pkg="service_utd" type="tf2posestamped" respawn="true" />
-
+        <!--node name="tf2posestamped" pkg="service_utd" type="tf2posestamped" respawn="true" /-->
+        <rosparam param="droneinit">[5.969434,-1.0,0,0]</rosparam>
+        <node name="fakedrone" pkg="service_utd" type="fakedrone" output="screen" />
         <node name="joy_node" pkg="joy" type="joy_node" respawn="true"/>
         <node name="drone_joystick" pkg="service_utd" type="joy2drone.py" respawn="true" />
         <rosparam param="drone_setpoint/gains">[0.4,0.4,0.8,0.8,0.8,1.2,0.8]</rosparam>
@@ -192,7 +198,7 @@
         <param name="waypointNav" value="false" type="bool" />
         <param name="alpha" value="0.95" />
         <param name="beta" value="0.01" />
-        <param name="detection_radius" value="100" />
+        <param name="detection_radius" value="10" />
         <param name="collision_radius" value="10.0" />
         <param name="num_particles" value="4000" />
         <param name="mapname" value="$(find service_utd)/matlabmap.yml" />

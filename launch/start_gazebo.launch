@@ -4,7 +4,7 @@
 
 <include file="$(find service_utd)/launch/quadrotor_empty_world.launch" />
 
-<group ns="uav1">
+<!--group ns="uav1">
 <include file="$(find service_utd)/launch/spawn_quadrotor_with_downward_cam.launch">
   <arg name="name" value="uav1" />
   <arg name="tf_prefix" value="uav1" />
@@ -42,7 +42,7 @@
   <arg name="y" value="-1.0" />
   <arg name="z" value="0.0" />
 </include>
-</group>
+</group-->
 
 <group ns="target">
   <!-- Load the URDF into the ROS Parameter Server -->

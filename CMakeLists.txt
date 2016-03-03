@@ -140,6 +140,7 @@ add_executable(drone_odom src/drone_odom.cpp)
 add_executable(drone_setpoint src/drone_setpoint.cpp)
 add_executable(rover_controller src/rover_controller.cpp src/urbanmap.cpp)
 add_executable(fakerover src/fakerover.cpp)
+add_executable(fakedrone src/fakedrone.cpp)
 add_executable(tf2posestamped src/tf2posestamped.cpp)
 add_executable(infocontroller src/infocontroller.cpp src/targetstateestimator.cpp)
 add_executable(ros2matlab src/ros2matlab.cpp)
@@ -161,6 +162,7 @@ add_dependencies(drone_odom service_utd_generate_messages_cpp)
 add_dependencies(drone_setpoint service_utd_generate_messages_cpp)
 add_dependencies(rover_controller service_utd_generate_messages_cpp)
 add_dependencies(fakerover service_utd_generate_messages_cpp)
+add_dependencies(fakedrone service_utd_generate_messages_cpp)
 add_dependencies(infocontroller service_utd_generate_messages_cpp)
 add_dependencies(tf2posestamped service_utd_generate_messages_cpp)
 add_dependencies(ros2matlab service_utd_generate_messages_cpp)
@@ -209,6 +211,10 @@ target_link_libraries(rover_controller
  target_link_libraries(fakerover
     ${catkin_LIBRARIES} ${GSL_LIBRARIES}
   )
+
+target_link_libraries(fakedrone
+     ${catkin_LIBRARIES} ${GSL_LIBRARIES}
+   )
 
 target_link_libraries(infocontroller
    ${catkin_LIBRARIES} ${OpenCV_LIBS}
