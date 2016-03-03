@@ -3,6 +3,9 @@
 <launch>
 
 <include file="$(find service_utd)/launch/quadrotor_empty_world.launch" />
+<!-- <param name="/use_sim_time" value="true" /> -->
+<!-- <param name="timefactor" value="5" /> -->
+<!-- <node name="clockserver" pkg="service_utd" type="clockserver" output="screen" required="true" /> -->
 
 <!--group ns="uav1">
 <include file="$(find service_utd)/launch/spawn_quadrotor_with_downward_cam.launch">
@@ -46,8 +49,8 @@
 
 <group ns="target">
   <!-- Load the URDF into the ROS Parameter Server -->
-	<param name="robot_description"
-		command="$(find xacro)/xacro.py '$(find p3dx_description)/urdf/pioneer3dx.xacro'" />
+	<!-- <param name="robot_description"
+		command="$(find xacro)/xacro.py '$(find p3dx_description)/urdf/pioneer3dx.xacro'" /> -->
     <!-- Run a python script to the send a service call to gazebo_ros to spawn
   		a URDF robot -->
   <!--node name="urdf_spawner" pkg="gazebo_ros" type="spawn_model"

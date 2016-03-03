@@ -56,7 +56,7 @@
         <param name="waypointNav" value="false" type="bool" />
         <param name="alpha" value="0.95" />
         <param name="beta" value="0.01" />
-        <param name="detection_radius" value="10" />
+        <param name="detection_radius" value="100" />
         <param name="collision_radius" value="10.0" />
         <param name="num_particles" value="4000" />
         <param name="mapname" value="$(find service_utd)/matlabmap.yml" />
@@ -103,7 +103,7 @@
         <param name="waypointNav" value="false" type="bool" />
         <param name="alpha" value="0.95" />
         <param name="beta" value="0.01" />
-        <param name="detection_radius" value="10" />
+        <param name="detection_radius" value="100" />
         <param name="collision_radius" value="10.0" />
         <param name="num_particles" value="4000" />
         <param name="mapname" value="$(find service_utd)/matlabmap.yml" />
@@ -151,7 +151,7 @@
         <param name="waypointNav" value="false" type="bool" />
         <param name="alpha" value="0.95" />
         <param name="beta" value="0.01" />
-        <param name="detection_radius" value="10" />
+        <param name="detection_radius" value="100" />
         <param name="collision_radius" value="10.0" />
         <param name="num_particles" value="4000" />
         <param name="mapname" value="$(find service_utd)/matlabmap.yml" />
@@ -198,7 +198,7 @@
         <param name="waypointNav" value="false" type="bool" />
         <param name="alpha" value="0.95" />
         <param name="beta" value="0.01" />
-        <param name="detection_radius" value="10" />
+        <param name="detection_radius" value="100" />
         <param name="collision_radius" value="10.0" />
         <param name="num_particles" value="4000" />
         <param name="mapname" value="$(find service_utd)/matlabmap.yml" />

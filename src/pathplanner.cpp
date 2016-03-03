@@ -184,8 +184,6 @@ public:
     setx = 0;
     sety = 0;
     setz = 1.4;
-    ptime = ros::Time::now();
-    ctime = ros::Time::now();
 
     gsl_rng_default_seed = time(NULL);
 
@@ -239,7 +237,13 @@ public:
 
     nh_.param("batchsimulation", batchSimulation, false);
     if(batchSimulation)
-      startT = ros::Time::now();
+    {
+      startT.sec = 0;
+      startT.nsec = 0;
+      while(startT.toSec() == 0.0)
+        startT = ros::Time::now();
+      ROS_INFO_STREAM("Planner starts at " << startT.toSec());
+    }
 
     if(waypointNav)
     {
@@ -405,6 +409,7 @@ public:
           {
               ROS_INFO_STREAM("Shutting down the node (batch simulations in progress)");
               endT = ros::Time::now();
+              ROS_INFO_STREAM("Planner ends at " << endT.toSec());
               simlength = endT - startT;
               time_t tt;
               time(&tt);
@@ -565,7 +570,7 @@ public:
 //              broadcast = true;
 //      }
 
-      cout << "UAV " << myId << " checking if it receives " << detectedUAV << " with ID " << callerId << endl;
+      ROS_DEBUG_STREAM("UAV " << myId << " checking if it receives " << detectedUAV << " with ID " << callerId);
 
       int collId = UAVid[detectedUAV];
       double distanceToUAV = 0;
@@ -784,8 +789,8 @@ public:
           }
       }
 
-      cout << pt << " " << closestE << " " << dmin << " " << um->elist[closestE] << endl;
-      cout << "from " << um->coord[um->elist[closestE].x] << " to " << um->coord[um->elist[closestE].y] << endl;
+      ROS_DEBUG_STREAM(pt << " " << closestE << " " << dmin << " " << um->elist[closestE]);
+      ROS_DEBUG_STREAM("from " << um->coord[um->elist[closestE].x] << " to " << um->coord[um->elist[closestE].y]);
 
       return std::pair<int, double>(closestE, dmin);
   }
@@ -884,13 +889,13 @@ public:
           onNode = true;
 
 
-      cout << "The edge closest to the UAV is " << idx << ",";
-      cout << " from vertex " << um->elist[idx].x << " to " << um->elist[idx].y << endl;
+      ROS_DEBUG_STREAM("The edge closest to the UAV is " << idx << ",");
+      ROS_DEBUG_STREAM(" from vertex " << um->elist[idx].x << " to " << um->elist[idx].y);
 //      pList.push_back(um->elist[findClosestEdge(Point2d(x,y))].x);
       pList.push_back(idx);
 
 
-      cout << "Nav starts from node " << pList[0] << " at " << um->coord[pList[0]] << endl;
+      ROS_DEBUG_STREAM("Nav starts from node " << pList[0] << " at " << um->coord[pList[0]]);
 
 
       Graph::edge_descriptor e;
@@ -909,9 +914,9 @@ public:
 
       // Compute the time it will take the UAV to reach the current destination node
 
-      cout << nh_.getNamespace() << " velocity is " << norm(ownVel);
+      ROS_DEBUG_STREAM(nh_.getNamespace() << " velocity is " << norm(ownVel));
       double timeToDest = norm(Point2d(wp_msg.x-x, wp_msg.y-y))/norm(ownVel);
-      cout << "Time to dest " << timeToDest << endl;
+      ROS_DEBUG_STREAM("Time to dest " << timeToDest);
       vector<double> estimRad;
 
       for(int k=0; k < um->elist.size(); k++)
@@ -1012,7 +1017,7 @@ public:
 
       IndexMap index = get(vertex_index, G);
 
-      std::cout << "edges(g) = ";
+      ROS_DEBUG_STREAM("edges(g) = ");
       graph_traits<Graph>::edge_iterator ei, ei_end;
 //      for (tie(ei, ei_end) = edges(G); ei != ei_end; ++ei)
 //          std::cout << "(" << index[source(*ei, G)] \
@@ -1020,7 +1025,7 @@ public:
 
       vector<double> dist(num_vertices(G));
       vector<vertex_descriptor> p(num_vertices(G));
-      cout << "The graph has " << num_vertices(G) << " vertices." << endl;
+      ROS_DEBUG_STREAM("The graph has " << num_vertices(G) << " vertices.");
       vertex_descriptor s = *(vertices(G).first);
       s = pList[0];
       s = searchStart;
@@ -1072,7 +1077,7 @@ public:
           minidx = idx;
       }
 
-      cout << "Minimum distance is " << mindist << " to node " << minidx << " at " << um->coord[minidx] << endl;
+      ROS_DEBUG_STREAM("Minimum distance is " << mindist << " to node " << minidx << " at " << um->coord[minidx]);
 
       int vidx = minidx;
 //      tie(vidx, d) = findClosestNode(mlePos);
@@ -1084,7 +1089,6 @@ public:
           vidx = p[vidx];
       }
 
-      cout << "Da path" << endl;
       for(vector<int>::iterator it=idxpath.begin(); it!=idxpath.end(); ++it)
       {
           cout << *it << ' ';
