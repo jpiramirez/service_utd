@@ -34,11 +34,11 @@
         <param name="tf_prefix" value="uav1" />
 
         <!--node name="tf2posestamped" pkg="service_utd" type="tf2posestamped" respawn="true" /-->
-        <rosparam param="droneinit">[-1.0,24.362551,0,0]</rosparam>
+        <rosparam param="droneinit">[-1.0,24.362551,1,0]</rosparam>
         <node name="fakedrone" pkg="service_utd" type="fakedrone" output="screen" />
         <node name="joy_node" pkg="joy" type="joy_node" respawn="true"/>
         <node name="drone_joystick" pkg="service_utd" type="joy2drone.py" respawn="true" />
-        <rosparam param="drone_setpoint/gains">[0.4,0.4,0.8,0.8,0.8,1.2,0.8]</rosparam>
+        <rosparam param="drone_setpoint/gains">[0.1,0.1,0.2,1,1,2,0.4]</rosparam>
         <node name="drone_setpoint" pkg="service_utd" type="drone_setpoint" respawn="true" />
 
         <!--param name="targetdetect/color" value="0 0 255" type="str" />
@@ -79,11 +79,11 @@
         <param name="tf_prefix" value="uav2" />
 
         <!--node name="tf2posestamped" pkg="service_utd" type="tf2posestamped" respawn="true" /-->
-        <rosparam param="droneinit">[42.280787,38.019486,0,0]</rosparam>
+        <rosparam param="droneinit">[42.280787,38.019486,1,0]</rosparam>
         <node name="fakedrone" pkg="service_utd" type="fakedrone" output="screen" />
         <node name="joy_node" pkg="joy" type="joy_node" respawn="true"/>
         <node name="drone_joystick" pkg="service_utd" type="joy2drone.py" respawn="true" />
-        <rosparam param="drone_setpoint/gains">[0.4,0.4,0.8,0.8,0.8,1.2,0.8]</rosparam>
+        <rosparam param="drone_setpoint/gains">[0.1,0.1,0.2,1,1,2,0.4]</rosparam>
         <node name="drone_setpoint" pkg="service_utd" type="drone_setpoint" respawn="true" />
 
         <param name="worldframe" value="/world" />
@@ -127,11 +127,11 @@
         <param name="tf_prefix" value="uav3" />
 
         <!--node name="tf2posestamped" pkg="service_utd" type="tf2posestamped" respawn="true" /-->
-        <rosparam param="droneinit">[41.764476,12.914353,0,0]</rosparam>
+        <rosparam param="droneinit">[41.764476,12.914353,1,0]</rosparam>
         <node name="fakedrone" pkg="service_utd" type="fakedrone" output="screen" />
         <node name="joy_node" pkg="joy" type="joy_node" respawn="true"/>
         <node name="drone_joystick" pkg="service_utd" type="joy2drone.py" respawn="true" />
-        <rosparam param="drone_setpoint/gains">[0.4,0.4,0.8,0.8,0.8,1.2,0.8]</rosparam>
+        <rosparam param="drone_setpoint/gains">[0.1,0.1,0.2,1,1,2,0.4]</rosparam>
         <node name="drone_setpoint" pkg="service_utd" type="drone_setpoint" respawn="true" />
 
         <param name="worldframe" value="/world" />
@@ -174,11 +174,11 @@
         <param name="tf_prefix" value="uav4" />
 
         <!--node name="tf2posestamped" pkg="service_utd" type="tf2posestamped" respawn="true" /-->
-        <rosparam param="droneinit">[5.969434,-1.0,0,0]</rosparam>
+        <rosparam param="droneinit">[5.969434,-1.0,1,0]</rosparam>
         <node name="fakedrone" pkg="service_utd" type="fakedrone" output="screen" />
         <node name="joy_node" pkg="joy" type="joy_node" respawn="true"/>
         <node name="drone_joystick" pkg="service_utd" type="joy2drone.py" respawn="true" />
-        <rosparam param="drone_setpoint/gains">[0.4,0.4,0.8,0.8,0.8,1.2,0.8]</rosparam>
+        <rosparam param="drone_setpoint/gains">[0.1,0.1,0.2,1,1,2,0.4]</rosparam>
         <node name="drone_setpoint" pkg="service_utd" type="drone_setpoint" respawn="true" />
 
         <param name="worldframe" value="/world" />

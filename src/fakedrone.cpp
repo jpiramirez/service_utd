@@ -42,8 +42,6 @@ class fakedrone
   float setx, sety, setz;
   float errx, erry, errz;
   float perrx, perry, perrz;
-  const gsl_rng_type *T;
-  gsl_rng *RNG;
   double g, m;
 
   ros::Timer timer;
@@ -72,16 +70,17 @@ public:
     u3 = 0;
     u4 = 0;
     g = 9.81;
-    m = 1;
+    m = 0.5;
 
     ptime = ros::Time::now();
     ctime = ros::Time::now();
+    while(ptime.toSec() == 0.0 || ctime.toSec() == 0.0)
+    {
+      ptime = ros::Time::now();
+      ctime = ros::Time::now();
+    }
 
-    T = gsl_rng_mt19937;
-    RNG = gsl_rng_alloc(T);
-    gsl_rng_env_setup();
-
-    timer = nh_.createTimer(ros::Duration(0.01), &fakedrone::computePose, this);
+    timer = nh_.createTimer(ros::Duration(0.004), &fakedrone::computePose, this);
 
   }
 

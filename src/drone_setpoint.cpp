@@ -35,7 +35,8 @@ class droneController
   float errx, erry, errz;
   float perrx, perry, perrz;
   float KPx, KPy, KPz, KDx, KDy, KDz, Ky;
-
+  int cycles, burnin;
+  bool launch;
 
 public:
   droneController()
@@ -81,8 +82,15 @@ public:
     pah = 0;
     ptime = ros::Time::now();
     ctime = ros::Time::now();
+    while(ptime.toSec() == 0.0 || ctime.toSec() == 0.0)
+    {
+      ptime = ros::Time::now();
+      ctime = ros::Time::now();
+    }
 
-
+    cycles = 0;
+    burnin = 50;
+    launch = false;
   }
 
   ~droneController()
@@ -95,6 +103,13 @@ public:
       ctime = ros::Time::now();
       d = ctime - ptime;
       double t = d.toSec();
+
+      if(launch == false)
+      {
+        cycles++;
+        if(cycles > burnin)
+          launch = true;
+      }
 
      if(t < 0.02)
          return;
@@ -144,6 +159,22 @@ public:
       control.angular.y = 0;
       control.angular.z = -Ky*ah;
 
+      if(fabs(control.linear.x) > 2.0)
+      {
+        control.linear.x = copysign(2.0, control.linear.x);
+      }
+      if(fabs(control.linear.y) > 2.0)
+      {
+        control.linear.y = copysign(2.0, control.linear.y);
+      }
+      if(fabs(control.linear.z) > 2.0)
+      {
+        control.linear.z = copysign(2.0, control.linear.z);
+      }
+      if(fabs(control.angular.z) > 2.0)
+      {
+        control.angular.z = copysign(2.0, control.angular.z);
+      }
 
       ctrl_pub.publish(control);
       ptime = ctime;

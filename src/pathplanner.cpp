@@ -329,8 +329,10 @@ public:
       double t = d.toSec();
       //ROS_INFO_STREAM("Sample period: " << t);
 
+      if(t < 0.1)
+        return;
 //      pf->predict(*um, t);
-      pf->simplePredict(*um, t);
+      pf->simplePredict(*um, 0.1);
 
       x = msg->pose.position.x;
       y = msg->pose.position.y;
@@ -587,89 +589,6 @@ public:
 
       ROS_INFO_STREAM(nh_.getNamespace() << " fusing particles from " << detectedUAV << " with ID " << callerId);
 
-//      double wsum = 0.0;
-//      double fuseRad = 5;
-//      for(int i=0; i < pf->N; i++)
-//      {
-//          Point2d ploc = um->ep2coord((int)pf->pp[i][0], pf->pp[i][1]);
-//          double wfac = 0.0;
-//          for(int j=0; j < msg->N; j++)
-//          {
-//              if((int)pf->pp[i][0] != (int)msg->data[j].x)
-//                  continue;
-//              Point2d ploc2 = um->ep2coord((int)msg->data[j].x, msg->data[j].y);
-//              if(norm(ploc-ploc2) < fuseRad)
-//              {
-//                  wfac += msg->w[j].data;
-//              }
-//          }
-//          pf->w[i] *= wfac;
-//          wsum += pf->w[i];
-//      }
-
-//      for(int i=0; i < pf->N; i++)
-//        pf->w[i] /= wsum;
-
-      // Will attempt to fuse the particle sets and resample from them
-
-//      vector<double> u, wc;
-//      vector<int> ind(pf->N);
-//      vector<Vec3f> fusedpp;
-//      vector<double> fusedw;
-//      double totalW = 0;
-
-//      for(int i=0; i < pf->N; i++)
-//      {
-//          fusedpp.push_back(pf->pp[i]);
-//          Vec3f particle;
-//          particle[0] = msg->data[i].x;
-//          particle[1] = msg->data[i].y;
-//          particle[2] = msg->data[i].z;
-//          fusedpp.push_back(particle);
-//          fusedw.push_back(pf->w[i]);
-//          totalW += pf->w[i];
-//          double weight = msg->w[i].data;
-//          fusedw.push_back(weight);
-//          totalW += weight;
-//      }
-
-//      // We now have a fused particle set with 2N points.
-//      // Let's resample it, but only N times.
-
-//      for(int i=0; i < fusedpp.size(); i++)
-//      {
-//          fusedw[i] /= totalW;
-
-//          if(i == 0)
-//              wc.push_back(fusedw[0]);
-//          else
-//              wc.push_back(wc[i-1] + fusedw[i]);
-
-//      }
-
-
-////      int k = 0;
-////      for(int i=0; i < pf->N; i++)
-////      {
-////          u.push_back((gsl_rng_uniform(RNG) + i)/(double)pf->N);
-////          while(wc[k] < u[i])
-////              k++;
-////          ind[i] = k;
-////      }
-//      for(int i=0; i < pf->N; i++)
-//          ind[i] = gsl_rng_uniform_int(RNG, 2*pf->N);
-
-//      vector<Vec3f> npp;
-//      for(int i=0; i < pf->N; i++)
-//          npp.push_back(Vec3f(0,0,0));
-//      for(int i=0; i < pf->N; i++)
-//      {
-//          npp[i] = fusedpp[ind[i]];
-//          pf->w[i] = 1.0/(double)pf->N;
-//      }
-
-//      pf->pp = npp;
-
 
         /*****************************
          * Computing per-edge statistics and using them to update the particle set
@@ -681,7 +600,8 @@ public:
 
         // Channel filter
         vector<double> LEfactor(um->elist.size(), 0.0);
-
+        vector<int> ppe(um->elist.size(), 0);
+        double aff = 0.0;
         for(int i=0; i < pf->N; i++)
         {
             geometry_msgs::Vector3 v = msg->data[i];
@@ -690,46 +610,36 @@ public:
             Evar[(int)v.x] += w*v.y*v.y;
             Efactor[(int)v.x] += w;
             LEfactor[(int)pf->pp[i][0]] += pf->w[i];
+            ppe[(int)pf->pp[i][0]] += 1;
         }
-//        cout << nh_.getNamespace() << "Fusing particles from UAV " << detectedUAV << endl;
 
+        double lsum = 0.0, esum = 0.0;
         for(int i=0; i < Evar.size(); i++)
         {
-//            cout << " E" << i << " factor=" << Efactor[i];
-//            if(Efactor[i] > VZERO)
-//            {
-//                Evar[i] -= Emean[i]*Emean[i];
-//                Emean[i] /= Efactor[i];
-//                Evar[i] /= Efactor[i];
-//            }
-//            else
-//            {
-//                Emean[i] = 0.0;
-//                Evar[i] = 0.0;
-//                Efactor[i] = 0.0;
-//            }
-//            cout << "Edge " << i << ". Factor: " << Efactor[i] << " Mean: " << Emean[i] << " Var: " << Evar[i] << endl;
-//            Efactor[i] /= um->wayln[i];
-            if(LEfactor[i] > 0.0)
-                Efactor[i] /= LEfactor[i];
-            else
-                Efactor[i] = 0;
+          Efactor[i] *= um->wayln[i];
+          LEfactor[i] *= um->wayln[i];
+          lsum += LEfactor[i];
+          esum += Efactor[i];
         }
-//        cout << endl;
+        for(int i=0; i < Evar.size(); i++)
+           aff += sqrt(Efactor[i]+LEfactor[i]);
+
+        vector<double> fusion(um->elist.size(), 0.0);
+        for(int i=0; i < Evar.size(); i++)
+        {
+          fusion[i] = Efactor[i]+LEfactor[i]+2.0*sqrt(Efactor[i]*LEfactor[i]);
+          fusion[i] /= 2.0 + 2.0*aff;
+        }
+
         double wsum = 0.0;
         for(int i=0; i < pf->N; i++)
         {
             int enumber = (int)pf->pp[i][0];
-//            double pos = pf->pp[i][1];
-//            double prob = gsl_ran_gaussian_pdf(Emean[enumber]-pos, sqrt(Evar[enumber]));
-//            if(isnan(Emean[enumber]))
-//            {
-//                prob = 0.0;
-//                Efactor[enumber] = 0;
-//            }
-            pf->w[i] *= Efactor[enumber];
-            if(pf->w[i] < 0.0)
-                pf->w[i] = 0.0;
+
+            if(ppe[enumber] > 0)
+              pf->w[i] = fusion[enumber]/(ppe[enumber]*um->wayln[enumber]);
+            else
+              pf->w[i] = 0.0;
             wsum += pf->w[i];
         }
         if(wsum < 1e-100){
@@ -949,7 +859,7 @@ public:
               Point2d uavcoord = Point2d(otherUAVst[j][0], otherUAVst[j][1]);
 
               double radtemp = 2*timeToDest*norm(otherUAVvel[j]);
-              if(radtemp < collisionRadius || norm(ownVel) < 1e-6)
+              // if(radtemp < collisionRadius || norm(ownVel) < 1e-6)
                 radtemp = collisionRadius;
               estimRad.push_back(radtemp);
               // if(norm(ownVel) < 1e-6)
@@ -960,6 +870,8 @@ public:
                  coll += 1000.0;
           }
 
+          Point2d midpt = Point2d(x,y)-0.5*Point2d(ls.x+le.x,ls.y+le.y);
+          double dweight = fabs(midpt.x*midpt.x + midpt.y*midpt.y);
 //          weight[k] = um->wayln[k]/(1.0+sc) + coll;
           if(sc < 1.0)
             weight[k] = 1.0-sc + coll;
