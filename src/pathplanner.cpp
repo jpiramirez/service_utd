@@ -59,6 +59,7 @@ class pathPlanner
 
   vector<Vec3d> otherUAVst, otherUAVpst, otherUAVvel;
   vector<bool> otherUAVvisible;
+  vector<bool> collflag;
   vector<ros::Time> pestim;
   std::map<int, int> UAVid;
   std::map<int, int> UAVsense;
@@ -99,6 +100,8 @@ class pathPlanner
   int cruiseAltitude;
 
   double collisionRadius, detectionRadius;
+
+  Point2d pt_from, pt_to;
 
   const gsl_rng_type *T;
   gsl_rng *RNG;
@@ -148,6 +151,7 @@ public:
         otherUAVpst.push_back(Vec3d(0,0,0));
         otherUAVvel.push_back(Vec3d(0,0,0));
         otherUAVvisible.push_back(false);
+        collflag.push_back(false);
         pestim.push_back(ros::Time::now());
     }
 
@@ -201,7 +205,7 @@ public:
 //    pf = new particleFilter(npart, alpha, beta, *um, 0.3);
     int memsize;
     nh_.param<int>("memsize", memsize, 100);
-    pf = new inhParticleFilter(npart, alpha, beta, *um, 0.3, memsize);
+    pf = new inhParticleFilter(npart, alpha, beta, *um, 0.1, memsize);
 
     double gamman = pow(alpha, alpha/(alpha-beta)) * pow(1-alpha , (1-alpha)/(alpha-beta));
     double gammad = pow(beta , beta/(alpha-beta)) * pow(1-beta , (1-beta)/(alpha-beta));
@@ -220,7 +224,7 @@ public:
     seqnum = 0;
 
 //    timer = nh_.createTimer(ros::Duration(0.2), &pathPlanner::computeWaypoint, this);
-    timerpf = nh_.createTimer(ros::Duration(5), &pathPlanner::broadcastParticles, this);
+    timerpf = nh_.createTimer(ros::Duration(0.5), &pathPlanner::broadcastParticles, this);
     timer = nh_.createTimer(ros::Duration(0.5), &pathPlanner::pathPlanOverMap, this);
     namedWindow("pdf");
 
@@ -290,8 +294,8 @@ public:
     ownVel = Vec3d(0, 0, 0);
     cruiseAltitude = 0;
 
-    // This gets rid of the leading "//uav" to retrieve only the UAV number. This requires the user to
-    // specify the namespace as "uav##"
+    // This gets rid of the leading "//uav" to retrieve only the UAV number.
+    // This requires the user to specify the namespace as "uav##"
     std::string myname = nh_.getNamespace();
     myname = myname.erase(0,5);
     myId = atoi(myname.c_str());
@@ -489,6 +493,20 @@ public:
         distanceToUAV += pow(msg->pose.position.y-y, 2.0);
         distanceToUAV += pow(msg->pose.position.z-z, 2.0);
         distanceToUAV = sqrt(distanceToUAV);
+
+        if(distanceToUAV < collisionRadius)
+        {
+          ROS_WARN_STREAM("UAV " << myId << " in imminent collision");
+          collflag[callerId] = true;
+        }
+        else
+          collflag[callerId] = false;
+
+        // if(distanceToUAV < 1.5)
+        // {
+        //   ROS_FATAL_STREAM("UAV " << myId << " has collided.");
+        //   ros::shutdown();
+        // }
 
         if(distanceToUAV > detectionRadius)
         {
@@ -1057,6 +1075,7 @@ public:
               wp_msg.y = um->coord[idx].y;
               wp_msg.z = baseAltitude;
               cout << "STATE: Approaching the road network" << endl;
+              pt_to = um->coord[idx];
           }
           else
               isUAVinGraph = true;
@@ -1080,23 +1099,27 @@ public:
 
               wp_msg.x = pt.x;
               wp_msg.y = pt.y;
+              pt_from = pt_to;
+              pt_to = pt;
               cout << "STATE: Traveling to the next waypoint" << endl;
           }
       }
 
 
-          switch(cruiseAltitude)
-          {
-          case(1):
-              wp_msg.z = baseAltitude;// + myId - 1;
-              break;
-          case(-1):
-              wp_msg.z = baseAltitude;// + myId - 1;
-              break;
-          default:
-              wp_msg.z = baseAltitude;
-              break;
-          }
+      switch(cruiseAltitude)
+      {
+        case(1):
+        if(batchSimulation)
+          wp_msg.z = baseAltitude + myId - 1;
+        break;
+        case(-1):
+        if(batchSimulation)
+          wp_msg.z = baseAltitude + myId - 1;
+        break;
+        default:
+        wp_msg.z = baseAltitude;
+        break;
+      }
 
       if(coll)
         cout << "UAV " << myId << " climbing to " << wp_msg.z << endl;
@@ -1188,337 +1211,6 @@ public:
       return std::pair<int, double>(nc, dist);
   }
 
-  void computeWaypoint(const ros::TimerEvent& te)
-  {
-
-      // Random tree
-      typedef adjacency_list<vecS, vecS, directedS, \
-              property<vertex_index_t, int>, property<edge_weight_t, double> > Graph;
-      typedef property_map<Graph, edge_weight_t>::type WeightMap;
-      typedef graph_traits<Graph >::vertex_descriptor vertex_descriptor;
-      typedef property_map<Graph, vertex_index_t>::type IndexMap;
-
-      bool onEdge=false, onNode=false;
-
-      vector<Point2d> coord;
-      xp = 2.0*z*tan(fabs(av/2.0));
-      yp = 2.0*z*tan(fabs(ah/2.0));
-
-      // Publishing the particle cloud for visualization
-      // PointCloud::Ptr msg (new PointCloud);
-      //   msg->header.frame_id = "world";
-      //   msg->height = msg->width = 1;
-      //   msg->width = pf->N;
-      //   for(int i=0; i < pf->N; i++)
-      //   {
-      //       Point2d ptmp = um->ep2coord((int)pf->pp[i][0], pf->pp[i][1]);
-      //       msg->points.push_back (pcl::PointXYZ(ptmp.x, ptmp.y, 0.0));
-      //   }
-      //   msg->header.stamp = ros::Time::now().toNSec();
-      //   pclpub.publish (msg);
-
-//      WeightMap wmap = get(edge_weight, G);
-      double weight;
-
-      coord.push_back(Point2d(x,y));
-      double r = 1;
-
-      int depth = 0;
-      vector<int> chList;
-      vector<int> pList;
-      vector<double> aList;
-
-      int vertex_id = 0;
-      pList.push_back(0);
-
-      Graph::edge_descriptor e; bool inserted;
-
-
-      Point2d pt;
-
-      /*************************************/
-      // Tree generation
-
-      vector<int> search_nodes;
-      vector<bool> search_node_reached;
-      Point2d myLoc(x,y);
-      double planningHorizon = 20;
-      for(int i=0; i < um->coord.size(); i++)
-      {
-          pt = um->coord[i];
-          if(norm(myLoc-pt) < planningHorizon && norm(myLoc-pt) > r)
-          {
-              search_nodes.push_back(i);
-              search_node_reached.push_back(false);
-          }
-      }
-
-      cout << "Nodes within reach: " << search_nodes.size() << endl;
-
-      vector<Point2d> vertex_coord;
-      typedef std::pair<int, int> Edge;
-      vector<Edge> E;
-      vector<double> wm;
-      vector<int> leaf;
-      vertex_coord.push_back(myLoc);
-      int maxvertex = 0;
-      double x1, x2, y1, y2;
-//      bool tree_built = false;
-//      while(!tree_built)
-//      {
-          for(int i=0; i < search_nodes.size(); i++)
-          {
-              while(!search_node_reached[i])
-              {
-                  Point2d destnode = um->coord[search_nodes[i]];
-                  int near;
-                  double dist;
-                  tie(near, dist) = findNearestCoord(vertex_coord, destnode);
-                  Point2d nearc = vertex_coord[near];
-                  double angle = atan2(destnode.y-nearc.y, destnode.x-nearc.x);
-                  Point2d newnode = nearc + Point2d(r*cos(angle), r*sin(angle));
-                  vertex_coord.push_back(newnode);
-                  maxvertex++;
-                  E.push_back(Edge(near, maxvertex));
-                  // Computing the edge weight
-                  x1 = x - 2.0*0.0254 - xp/2.0;
-                  x2 = x - 2.0*0.0254 + xp/2.0;
-                  y1 = y - yp/2.0;
-                  y2 = y + yp/2.0;
-                  weight = 0;
-                  for(int k=0; k < pf->N; k++)
-                  {
-                      Point2d pc = um->ep2coord((int)pf->pp[k][0], pf->pp[k][1]);
-                      if(pc.x > x1 && pc.x < x2 && pc.y > y1 && pc.y < y2)
-                      {
-                          weight += pf->w[k];
-                      }
-                  }
-                  if(weight > 1e-10)
-                    wm.push_back(1.0/weight);
-                  else
-                      wm.push_back(0.0);
-                  if(dist < r)
-                  {
-                      search_node_reached[i] = true;
-                      leaf.push_back(maxvertex);
-                  }
-              }
-          }
-//      }
-
-      cout << "Tree has " << vertex_coord.size() << " nodes." << endl;
-      /*************************************/
-
-
-      Graph G(vertex_coord.size());
-      for(int i=0; i < E.size(); i++)
-      {
-          add_edge(E[i].first, E[i].second, wm[i], G);
-          cout << "(" << E[i].first << "," << E[i].second << "," << wm[i] << ") ";
-      }
-
-      cout << "Graph has " << num_vertices(G) << " nodes" << endl;
-      IndexMap index = get(vertex_index, G);
-      vector<double> d(num_vertices(G));
-      vector<vertex_descriptor> p(num_vertices(G));
-      vertex_descriptor s = *(vertices(G).first);
-      cout << "Starting node: " << s << endl;
-      dijkstra_shortest_paths(G, s, predecessor_map(&p[0]).distance_map(&d[0]));
-
-      cout << "Dijkstra OK" << endl;
-
-      int minidx = leaf[0];
-      double mindist = 1e300;
-
-      graph_traits<Graph>::vertex_iterator vi, vend;
-      for(tie(vi, vend) = vertices(G); vi!=vend; ++vi)
-      {
-          cout << "vertex: " << index[*vi] << " distance: " << d[*vi] << " Pred: " << p[*vi] << endl;
-      }
-
-      for(int i=0; i < leaf.size(); i++)
-      {
-          vertex_descriptor vd = leaf[i];
-          if(d[index[vd]] < mindist && index[vd] != s)
-          {
-              minidx = index[vd];
-              mindist = d[vd];
-          }
-
-      }
-
-
-      cout << "Minimum distance is " << mindist << " to node " << minidx << endl;
-
-      int vidx = minidx;
-      vector<int> idxpath;
-      idxpath.push_back(vidx);
-      while(vidx != 0)
-      {
-          idxpath.push_back(p[vidx]);
-          vidx = p[vidx];
-      }
-
-      cout << "Da path" << endl;
-      for(vector<int>::iterator it=idxpath.begin(); it!=idxpath.end(); ++it)
-      {
-          cout << *it << ' ';
-      }
-
-      pt = vertex_coord[idxpath[idxpath.size()-2]];
-//      if(mindist > 99)
-//      {
-//          pt = Point2d(x,y);
-//          ROS_INFO_STREAM("There is no escape for the drone.");
-//      }
-
-     // pt = um->coord[idxpath[idxpath.size()-2]];
-      bool coll = false;
-      bool climb = false;
-      for(int i=0; i < otherUAVst.size(); i++)
-      {
-          if(norm(Point2d(x,y) - Point2d(otherUAVst[i][0], otherUAVst[i][1])) < collisionRadius)
-          {
-              coll = true;
-              if(norm(Point2d(x,y)) < norm(Point2d(otherUAVst[i][0], otherUAVst[i][1])))
-                  climb = true;
-          }
-      }
-
-      if(cruiseAltitude == 0)
-      {
-          if(coll)
-          {
-              if(climb)
-                  cruiseAltitude = 1;
-              else
-                  cruiseAltitude = -1;
-          }
-      }
-      else if(cruiseAltitude == 1)
-      {
-          if(!coll)
-              cruiseAltitude = 0;
-      }
-          else
-      {
-          if(!coll)
-              cruiseAltitude = 0;
-      }
-
-//      if(coll)
-//      {
-//          pt = Point2d(x,y);
-//          ROS_INFO_STREAM("Collision imminent, stopping.");
-//      }
-
-      int idx;
-      double distance;
-      tie(idx, distance) = findClosestNode(Point2d(x,y));
-
-//      if(!isUAVinGraph)
-//      {
-//          tie(idx, distance) = findClosestNode(Point2d(x,y));
-//          if(norm(Point2d(x,y) - um->coord[idx]) > 0.1 && !targetFound)
-//          {
-//              wp_msg.x = um->coord[idx].x;
-//              wp_msg.y = um->coord[idx].y;
-//              wp_msg.z = baseAltitude;
-//              cout << "STATE: Approaching the road network" << endl;
-//          }
-//          else
-//              isUAVinGraph = true;
-//      }
-//      else
-//      {
-
-
-          if(targetFound)
-          {
-              wp_msg.x = x+targetPosition.position.x;
-              wp_msg.y = y+targetPosition.position.y;
-              cout << "STATE: Target detected, following it." << endl;
-          }
-          else
-//              if(norm(Point2d(x,y) - um->coord[idx]) < 0.5)
-          {
-
-              wp_msg.x = pt.x;
-              wp_msg.y = pt.y;
-              cout << "STATE: Traveling to the next waypoint" << endl;
-          }
-//      }
-
-
-          switch(cruiseAltitude)
-          {
-          case(1):
-              wp_msg.z = baseAltitude + myId;
-              break;
-          case(-1):
-              wp_msg.z = baseAltitude + myId;
-              break;
-          default:
-              wp_msg.z = baseAltitude;
-              break;
-          }
-
-      if(coll)
-        cout << "UAV " << myId << " climbing to " << wp_msg.z << endl;
-
-      waypoint_pub.publish(wp_msg);
-
-
-
-      // The camera is offset 2" from the drone center in the x-axis
-      x1 = x - 2.0*0.0254 - xp/2.0;
-      x2 = x - 2.0*0.0254 + xp/2.0;
-      y1 = y - yp/2.0;
-      y2 = y + yp/2.0;
-
-      // Mat visimagesc = Mat::zeros(500, 500, CV_8UC3);
-      Mat visimagesc(500, 500, CV_8UC3, Scalar(255,255,255));
-      um->drawMap(visimagesc);
-      pf->drawParticles(*um, visimagesc);
-      Point uv1 = um->xy2uv(visimagesc.rows, visimagesc.cols, Point2d(x2,y2));
-      Point uv2 = um->xy2uv(visimagesc.rows, visimagesc.cols, Point2d(x1,y1));
-      rectangle(visimagesc, uv1, uv2, CV_RGB(255, 0, 0), 3);
-      uv1 = um->xy2uv(visimagesc.rows, visimagesc.cols, Point2d(wp_msg.x, wp_msg.y));
-      circle(visimagesc, uv1, 10, CV_RGB(0,255,0));
-
-      std::cout << "edges(g) = ";
-      graph_traits<Graph>::edge_iterator ei, ei_end;
-      for (tie(ei, ei_end) = edges(G); ei != ei_end; ++ei)
-      {
-          uv1 = um->xy2uv(visimagesc.rows, visimagesc.cols, vertex_coord[index[source(*ei, G)]]);
-          uv2 = um->xy2uv(visimagesc.rows, visimagesc.cols, vertex_coord[index[target(*ei, G)]]);
-          cv::line(visimagesc, uv1, uv2, CV_RGB(255,255,255), 1);
-          cv::circle(visimagesc, uv2, 3, CV_RGB(255,255,255));
-      }
-
-      for(int i=0; i < idxpath.size()-1; i++)
-      {
-          uv1 = um->xy2uv(visimagesc.rows, visimagesc.cols, vertex_coord[idxpath[i]]);
-          uv2 = um->xy2uv(visimagesc.rows, visimagesc.cols, vertex_coord[idxpath[i+1]]);
-          cv::line(visimagesc, uv1, uv2, CV_RGB(0,255,0), 2);
-      }
-
-      for(int j=0; j < otherUAVst.size(); j++)
-      {
-          pt = Point2d(otherUAVst[j][0], otherUAVst[j][1]);
-          uv1 = um->xy2uv(visimagesc.rows, visimagesc.cols, pt);
-          int rad = collisionRadius*visimagesc.rows/(um->ne.x - um->sw.x);
-          cv::circle(visimagesc, uv1, rad, CV_RGB(255,0,0), 2);
-          rad = detectionRadius*visimagesc.rows/(um->ne.x - um->sw.x);
-          cv::circle(visimagesc, uv1, rad, CV_RGB(100,100,100), 2);
-      }
-
-      imshow("pdf", visimagesc);
-      waitKey(3);
-
-
-  }
 
 };
 
