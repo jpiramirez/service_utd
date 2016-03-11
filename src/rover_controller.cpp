@@ -21,6 +21,9 @@
 #include <algorithm>
 #include <boost/lexical_cast.hpp>
 #include "urbanmap.hpp"
+#include <geometry_msgs/Point.h>
+#include <visualization_msgs/MarkerArray.h>
+#include <visualization_msgs/Marker.h>
 
 
 using namespace std;
@@ -33,10 +36,13 @@ class roverController
   ros::Publisher ctrl_pub;
   ros::Subscriber pose_sub;
   ros::Subscriber point_sub;
+  ros::Publisher viz_pub;
   double x, y, z, theta;
   ros::Time ptime, ctime;
+  ros::Timer vtimer;
   ros::Duration d;
   geometry_msgs::PoseStamped odom;
+  nav_msgs::Odometry roverpose;
   geometry_msgs::Twist control;
   float px, py, pz, ah, pah;
   float setx, sety, setz;
@@ -55,6 +61,7 @@ public:
     string odomtopic;
     nh_.param<std::string>("odometry_topic", odomtopic, "p3dx/base_pose_ground_truth");
     pose_sub = nh_.subscribe(odomtopic, 2, &roverController::Callback, this);
+    viz_pub = nh_.advertise<visualization_msgs::MarkerArray>("mapviz", 2);
 //    point_sub = nh_.subscribe("ardrone/setpoint", 2, &roverController::setpointCallback, this);
     ROS_INFO_STREAM("Rover set point controller initialized.");
     x = 0.0;
@@ -87,6 +94,8 @@ public:
     nh_.param<std::string>("mapname", mapname, "test.yml");
     um->loadMap(mapname);
 
+    vtimer = nh_.createTimer(ros::Duration(0.1), &roverController::visualize, this);
+
     isRoverOnMap = false;
     isRoverTraveling = false;
   }
@@ -107,7 +116,7 @@ public:
 
      // if(t < 0.02)
       //    return;
-
+      roverpose = *msg;
       x = msg->pose.pose.position.x;
       y = msg->pose.pose.position.y;
       z = msg->pose.pose.position.z;
@@ -278,6 +287,115 @@ public:
 
 
       return coll;
+  }
+
+  void visualize(const ros::TimerEvent& te)
+  {
+    visualization_msgs::Marker marker;
+    vector<visualization_msgs::Marker> markarr;
+    visualization_msgs::MarkerArray markerarray;
+
+    // Drawing the intersections
+
+    marker.header.frame_id = "world";
+    marker.header.stamp = ros::Time();
+    marker.ns = nh_.getNamespace();
+    marker.id = 0;
+    marker.type = visualization_msgs::Marker::SPHERE_LIST;
+    marker.action = visualization_msgs::Marker::ADD;
+    marker.pose.position.x = 0;
+    marker.pose.position.y = 0;
+    marker.pose.position.z = 0;
+    marker.pose.orientation.x = 0.0;
+    marker.pose.orientation.y = 0.0;
+    marker.pose.orientation.z = 0.0;
+    marker.pose.orientation.w = 1.0;
+    marker.scale.x = 1;
+    marker.scale.y = 0.1;
+    marker.scale.z = 0.1;
+    marker.color.a = 1.0; // Don't forget to set the alpha!
+    marker.color.r = 1.0;
+    marker.color.g = 1.0;
+    marker.color.b = 1.0;
+    vector<geometry_msgs::Point> ptarray;
+    for(int i=0; i < um->coord.size(); i++)
+    {
+      geometry_msgs::Point pt;
+      pt.x = um->coord[i].x;
+      pt.y = um->coord[i].y;
+      pt.z = 0;
+      ptarray.push_back(pt);
+    }
+    marker.points = ptarray;
+
+    markarr.push_back(marker);
+
+    // Drawing the streets
+
+    marker.header.frame_id = "world";
+    marker.header.stamp = ros::Time();
+    marker.ns = nh_.getNamespace();
+    marker.id = 1;
+    marker.type = visualization_msgs::Marker::LINE_LIST;
+    marker.action = visualization_msgs::Marker::ADD;
+    marker.pose.position.x = 0;
+    marker.pose.position.y = 0;
+    marker.pose.position.z = 0;
+    marker.pose.orientation.x = 0.0;
+    marker.pose.orientation.y = 0.0;
+    marker.pose.orientation.z = 0.0;
+    marker.pose.orientation.w = 1.0;
+    marker.scale.x = 0.1;
+    marker.scale.y = 0.1;
+    marker.scale.z = 0.1;
+    marker.color.a = 1.0; // Don't forget to set the alpha!
+    marker.color.r = 1.0;
+    marker.color.g = 1.0;
+    marker.color.b = 1.0;
+    ptarray.clear();
+    for(int i=0; i < um->elist.size(); i++)
+    {
+      geometry_msgs::Point pt;
+      pt.x = um->coord[um->elist[i].x].x;
+      pt.y = um->coord[um->elist[i].x].y;
+      pt.z = 0;
+      ptarray.push_back(pt);
+      pt.x = um->coord[um->elist[i].y].x;
+      pt.y = um->coord[um->elist[i].y].y;
+      pt.z = 0;
+      ptarray.push_back(pt);
+    }
+    marker.points = ptarray;
+
+    markarr.push_back(marker);
+
+
+    marker.header.frame_id = "world";
+    marker.header.stamp = ros::Time();
+    marker.ns = nh_.getNamespace();
+    marker.id = 2;
+    marker.type = visualization_msgs::Marker::MESH_RESOURCE;
+    marker.action = visualization_msgs::Marker::ADD;
+    marker.pose.position = roverpose.pose.pose.position;
+    marker.pose.position.z = 0.5;
+    marker.pose.orientation = roverpose.pose.pose.orientation;
+    marker.scale.x = 3;
+    marker.scale.y = 3;
+    marker.scale.z = 3;
+    marker.color.a = 1.0; // Don't forget to set the alpha!
+    marker.color.r = 1.0;
+    marker.color.g = 0.0;
+    marker.color.b = 0.0;
+    ptarray.clear();
+    marker.points = ptarray;
+    marker.mesh_use_embedded_materials = true;
+    marker.mesh_resource = "package://service_utd/meshes/pioneer.dae";
+
+    markarr.push_back(marker);
+
+    markerarray.markers = markarr;
+
+    viz_pub.publish(markerarray);
   }
 
 

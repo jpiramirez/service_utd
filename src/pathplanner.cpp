@@ -32,6 +32,9 @@
 #include <pcl_conversions/pcl_conversions.h>
 #include <pcl_ros/point_cloud.h>
 #include <pcl/point_types.h>
+#include <visualization_msgs/Marker.h>
+#include <visualization_msgs/MarkerArray.h>
+#include <std_msgs/ColorRGBA.h>
 
 #define VZERO 1e-100
 
@@ -49,6 +52,7 @@ class pathPlanner
   ros::Publisher map_pub;
   ros::Publisher searchmap_pub;
   ros::Publisher pclpub;
+  ros::Publisher viz_pub;
   ros::Subscriber pose_sub;
   ros::Subscriber object_sub;
   ros::Subscriber tgtpose_sub;
@@ -66,6 +70,7 @@ class pathPlanner
   std::map<int, service_utd::ParticleSet > pfset;
 
   geometry_msgs::Vector3 wp_msg;
+  geometry_msgs::PoseStamped ownPose;
   geometry_msgs::Pose targetPosition;
   service_utd::ProbMap pm_msg, sm_msg;
   float x, y, z;
@@ -129,6 +134,7 @@ public:
     tgtpose_sub = nh_.subscribe("objectpose", 1, &pathPlanner::targetPositionCallback, this);
     softmeas_sub = nh_.subscribe("ground_obs", 1, &pathPlanner::softMeasurementCallback, this);
     //pclpub = nh_.advertise<PointCloud>("particles", 1);
+    viz_pub = nh_.advertise<visualization_msgs::MarkerArray>("visuals", 2);
 
     vector<int> connlist;
     nh_.getParam("UAVdetectability", connlist);
@@ -337,6 +343,8 @@ public:
         return;
 //      pf->predict(*um, t);
       pf->simplePredict(*um, 0.1);
+
+      ownPose = *msg;
 
       x = msg->pose.position.x;
       y = msg->pose.position.y;
@@ -1189,6 +1197,171 @@ public:
 
       imshow("pdf", visimagesc);
       waitKey(3);
+
+
+      //RVIZ visualization
+
+      visualization_msgs::Marker marker;
+      vector<visualization_msgs::Marker> markarr;
+      visualization_msgs::MarkerArray markerarray;
+
+      // Drawing the particle filter
+      double meanw = 0.0;
+      for(int i=0; i < pf->N; i++)
+      {
+          if(!isnan(pf->w[i]))
+            meanw += pf->w[i];
+      }
+      meanw /= (double)pf->N;
+
+      marker.header.frame_id = "world";
+      marker.header.stamp = ros::Time();
+      marker.ns = nh_.getNamespace();
+      marker.id = 0;
+      marker.type = visualization_msgs::Marker::SPHERE_LIST;
+      marker.action = visualization_msgs::Marker::ADD;
+      marker.pose.position.x = 0;
+      marker.pose.position.y = 0;
+      marker.pose.position.z = 0;
+      marker.pose.orientation.x = 0.0;
+      marker.pose.orientation.y = 0.0;
+      marker.pose.orientation.z = 0.0;
+      marker.pose.orientation.w = 1.0;
+      marker.scale.x = 0.2;
+      marker.scale.y = 0.2;
+      marker.scale.z = 0.2;
+      marker.color.a = 1.0; // Don't forget to set the alpha!
+      marker.color.r = 1.0;
+      marker.color.g = 0.0;
+      marker.color.b = 1.0;
+      vector<geometry_msgs::Point> ptarray;
+      for(int i=0; i < pf->N; i++)
+      {
+        geometry_msgs::Point pt;
+        if(pf->w[i] >= meanw)
+        {
+          Point2d p = um->ep2coord((int)pf->pp[i][0], pf->pp[i][1]);
+          pt.x = p.x;
+          pt.y = p.y;
+          pt.z = 0.2;
+          ptarray.push_back(pt);
+        }
+      }
+      marker.points = ptarray;
+
+      markarr.push_back(marker);
+
+      marker.header.frame_id = "world";
+      marker.header.stamp = ros::Time();
+      marker.ns = nh_.getNamespace();
+      marker.id = 1;
+      marker.type = visualization_msgs::Marker::SPHERE_LIST;
+      marker.action = visualization_msgs::Marker::ADD;
+      marker.pose.position.x = 0;
+      marker.pose.position.y = 0;
+      marker.pose.position.z = 0;
+      marker.pose.orientation.x = 0.0;
+      marker.pose.orientation.y = 0.0;
+      marker.pose.orientation.z = 0.0;
+      marker.pose.orientation.w = 1.0;
+      marker.scale.x = 0.2;
+      marker.scale.y = 0.2;
+      marker.scale.z = 0.2;
+      marker.color.a = 1.0; // Don't forget to set the alpha!
+      marker.color.r = 0.0;
+      marker.color.g = 1.0;
+      marker.color.b = 1.0;
+      ptarray.clear();
+      for(int i=0; i < pf->N; i++)
+      {
+        geometry_msgs::Point pt;
+        if(pf->w[i] < meanw)
+        {
+          Point2d p = um->ep2coord((int)pf->pp[i][0], pf->pp[i][1]);
+          pt.x = p.x;
+          pt.y = p.y;
+          pt.z = 0.2;
+          ptarray.push_back(pt);
+        }
+      }
+      marker.points = ptarray;
+
+      markarr.push_back(marker);
+
+      // Drawing the quad
+      marker.header.frame_id = "world";
+      marker.header.stamp = ros::Time();
+      marker.ns = nh_.getNamespace();
+      marker.id = 2;
+      marker.type = visualization_msgs::Marker::MESH_RESOURCE;
+      marker.action = visualization_msgs::Marker::ADD;
+      marker.pose.position.x = ownPose.pose.position.x;
+      marker.pose.position.y = ownPose.pose.position.y;
+      marker.pose.position.z = ownPose.pose.position.z;
+      marker.pose.orientation.x = ownPose.pose.orientation.x;
+      marker.pose.orientation.y = ownPose.pose.orientation.y;
+      marker.pose.orientation.z = ownPose.pose.orientation.z;
+      marker.pose.orientation.w = ownPose.pose.orientation.w;
+      marker.scale.x = 3.0;
+      marker.scale.y = 3.0;
+      marker.scale.z = 3.0;
+      marker.color.a = 0.0; // Don't forget to set the alpha!
+      marker.color.r = 0.0;
+      marker.color.g = 0.0;
+      marker.color.b = 0.0;
+      marker.mesh_use_embedded_materials = true;
+      marker.mesh_resource = "package://service_utd/meshes/quadrotor_base.dae";
+
+      markarr.push_back(marker);
+
+      marker.header.frame_id = "world";
+      marker.header.stamp = ros::Time();
+      marker.ns = nh_.getNamespace();
+      marker.id = 3;
+      marker.type = visualization_msgs::Marker::TEXT_VIEW_FACING;
+      marker.action = visualization_msgs::Marker::ADD;
+      marker.pose.position.x = ownPose.pose.position.x;
+      marker.pose.position.y = ownPose.pose.position.y;
+      marker.pose.position.z = ownPose.pose.position.z+0.5;
+      marker.pose.orientation.x = ownPose.pose.orientation.x;
+      marker.pose.orientation.y = ownPose.pose.orientation.y;
+      marker.pose.orientation.z = ownPose.pose.orientation.z;
+      marker.pose.orientation.w = ownPose.pose.orientation.w;
+      marker.scale.x = 2.0;
+      marker.scale.y = 2.0;
+      marker.scale.z = 1.0;
+      marker.color.a = 1.0; // Don't forget to set the alpha!
+      marker.color.r = 0.0;
+      marker.color.g = 1.0;
+      marker.color.b = 0.0;
+      marker.text = nh_.getNamespace();
+      markarr.push_back(marker);
+
+      marker.header.frame_id = "world";
+      marker.header.stamp = ros::Time();
+      marker.ns = nh_.getNamespace();
+      marker.id = 4;
+      marker.type = visualization_msgs::Marker::SPHERE;
+      marker.action = visualization_msgs::Marker::ADD;
+      marker.pose.position.x = ownPose.pose.position.x;
+      marker.pose.position.y = ownPose.pose.position.y;
+      marker.pose.position.z = ownPose.pose.position.z;
+      marker.pose.orientation.x = ownPose.pose.orientation.x;
+      marker.pose.orientation.y = ownPose.pose.orientation.y;
+      marker.pose.orientation.z = ownPose.pose.orientation.z;
+      marker.pose.orientation.w = ownPose.pose.orientation.w;
+      marker.scale.x = collisionRadius;
+      marker.scale.y = collisionRadius;
+      marker.scale.z = collisionRadius;
+      marker.color.a = 0.25; // Don't forget to set the alpha!
+      marker.color.r = 1.0;
+      marker.color.g = 0.0;
+      marker.color.b = 0.0;
+      marker.text = nh_.getNamespace();
+      markarr.push_back(marker);
+
+      markerarray.markers = markarr;
+      viz_pub.publish(markerarray);
 
 //      um->coord.pop_back();
 
