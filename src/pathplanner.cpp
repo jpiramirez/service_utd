@@ -121,6 +121,7 @@ class pathPlanner
   std::string prefix;
 
   int horizonparam;
+  bool displayMap;
 
 public:
   pathPlanner()
@@ -213,6 +214,10 @@ public:
     nh_.param<int>("memsize", memsize, 100);
     pf = new inhParticleFilter(npart, alpha, beta, *um, 0.1, memsize);
 
+    nh_.param<bool>("displaymap", displayMap, true);
+    if(displayMap)
+        namedWindow("pdf");
+
     double gamman = pow(alpha, alpha/(alpha-beta)) * pow(1-alpha , (1-alpha)/(alpha-beta));
     double gammad = pow(beta , beta/(alpha-beta)) * pow(1-beta , (1-beta)/(alpha-beta));
 
@@ -232,7 +237,6 @@ public:
 //    timer = nh_.createTimer(ros::Duration(0.2), &pathPlanner::computeWaypoint, this);
     timerpf = nh_.createTimer(ros::Duration(0.5), &pathPlanner::broadcastParticles, this);
     timer = nh_.createTimer(ros::Duration(0.5), &pathPlanner::pathPlanOverMap, this);
-    namedWindow("pdf");
 
     ptime = ros::Time::now();
     ctime = ros::Time::now();
@@ -1134,52 +1138,54 @@ public:
 
       waypoint_pub.publish(wp_msg);
 
-      xp = 2.0*z*tan(fabs(av/2.0));
-      yp = 2.0*z*tan(fabs(ah/2.0));
-
-      // The camera is offset 2" from the drone center in the x-axis
-      float x1 = x - 2.0*0.0254 - xp/2.0;
-      float x2 = x - 2.0*0.0254 + xp/2.0;
-      float y1 = y - yp/2.0;
-      float y2 = y + yp/2.0;
-
-      // Mat visimagesc = Mat::zeros(500, 500, CV_8UC3);
-      Mat visimagesc(500, 500, CV_8UC3, Scalar(255,255,255));
-      um->drawMap(visimagesc);
-      pf->drawParticles(*um, visimagesc);
-      Point uv1 = um->xy2uv(visimagesc.rows, visimagesc.cols, Point2d(x2,y2));
-      Point uv2 = um->xy2uv(visimagesc.rows, visimagesc.cols, Point2d(x1,y1));
-      rectangle(visimagesc, uv1, uv2, CV_RGB(255, 0, 0), 3);
-      cv::putText(visimagesc, nh_.getNamespace().c_str(), uv2, FONT_HERSHEY_SIMPLEX, 0.5, CV_RGB(0,0,0));
-      uv1 = um->xy2uv(visimagesc.rows, visimagesc.cols, Point2d(wp_msg.x, wp_msg.y));
-      circle(visimagesc, uv1, 10, CV_RGB(0,255,0));
-
-//      um->coord.push_back(Point2d(x,y));
-
-      for (tie(ei, ei_end) = edges(G); ei != ei_end; ++ei)
+      if(displayMap)
       {
+        xp = 2.0*z*tan(fabs(av/2.0));
+        yp = 2.0*z*tan(fabs(ah/2.0));
+
+        // The camera is offset 2" from the drone center in the x-axis
+        float x1 = x - 2.0*0.0254 - xp/2.0;
+        float x2 = x - 2.0*0.0254 + xp/2.0;
+        float y1 = y - yp/2.0;
+        float y2 = y + yp/2.0;
+
+        // Mat visimagesc = Mat::zeros(500, 500, CV_8UC3);
+        Mat visimagesc(500, 500, CV_8UC3, Scalar(255,255,255));
+        um->drawMap(visimagesc);
+        pf->drawParticles(*um, visimagesc);
+        Point uv1 = um->xy2uv(visimagesc.rows, visimagesc.cols, Point2d(x2,y2));
+        Point uv2 = um->xy2uv(visimagesc.rows, visimagesc.cols, Point2d(x1,y1));
+        rectangle(visimagesc, uv1, uv2, CV_RGB(255, 0, 0), 3);
+        cv::putText(visimagesc, nh_.getNamespace().c_str(), uv2, FONT_HERSHEY_SIMPLEX, 0.5, CV_RGB(0,0,0));
+        uv1 = um->xy2uv(visimagesc.rows, visimagesc.cols, Point2d(wp_msg.x, wp_msg.y));
+        circle(visimagesc, uv1, 10, CV_RGB(0,255,0));
+
+        //      um->coord.push_back(Point2d(x,y));
+
+        for (tie(ei, ei_end) = edges(G); ei != ei_end; ++ei)
+        {
           uv1 = um->xy2uv(visimagesc.rows, visimagesc.cols, um->coord[index[source(*ei, G)]]);
           uv2 = um->xy2uv(visimagesc.rows, visimagesc.cols, um->coord[index[target(*ei, G)]]);
           cv::line(visimagesc, uv1, uv2, CV_RGB(0,0,0), 1);
           cv::circle(visimagesc, uv2, 3, CV_RGB(255,255,255));
-      }
+        }
 
-      uv1 = um->xy2uv(visimagesc.rows, visimagesc.cols, Point2d(x,y));
-      uv2 = um->xy2uv(visimagesc.rows, visimagesc.cols, Point2d(x+cos(proj),y+sin(proj)));
-      cv::line(visimagesc, uv1, uv2, CV_RGB(0,0,255), 3);
+        uv1 = um->xy2uv(visimagesc.rows, visimagesc.cols, Point2d(x,y));
+        uv2 = um->xy2uv(visimagesc.rows, visimagesc.cols, Point2d(x+cos(proj),y+sin(proj)));
+        cv::line(visimagesc, uv1, uv2, CV_RGB(0,0,255), 3);
 
-      uv1 = um->xy2uv(visimagesc.rows, visimagesc.cols, um->coord[idxpath[0]]);
-      for(int i=1; i < idxpath.size(); i++)
-      {
+        uv1 = um->xy2uv(visimagesc.rows, visimagesc.cols, um->coord[idxpath[0]]);
+        for(int i=1; i < idxpath.size(); i++)
+        {
           uv2 = um->xy2uv(visimagesc.rows, visimagesc.cols, um->coord[idxpath[i]]);
           cv::line(visimagesc, uv1, uv2, CV_RGB(0,255,0), 2);
           uv1 = uv2;
-      }
+        }
 
-      for(int j=0; j < otherUAVst.size(); j++)
-      {
+        for(int j=0; j < otherUAVst.size(); j++)
+        {
           if(otherUAVvisible[j] == false)
-            continue;
+          continue;
           pt = Point2d(otherUAVst[j][0], otherUAVst[j][1]);
           uv1 = um->xy2uv(visimagesc.rows, visimagesc.cols, pt);
           int rad = estimRad[j]*visimagesc.rows/(um->ne.x - um->sw.x);
@@ -1188,16 +1194,16 @@ public:
           cv::circle(visimagesc, uv1, rad, CV_RGB(100,100,100), 2);
           rad = collisionRadius*visimagesc.rows/(um->ne.x - um->sw.x);
           cv::circle(visimagesc, uv1, rad, CV_RGB(255,0,0), 2);
+        }
+
+
+        pt = um->ep2coord((int)mle[0], mle[1]);
+        uv1 = um->xy2uv(visimagesc.rows, visimagesc.cols, pt);
+        circle(visimagesc, uv1, 5, CV_RGB(0,255,255), -1);
+
+        imshow("pdf", visimagesc);
+        waitKey(3);
       }
-
-
-      pt = um->ep2coord((int)mle[0], mle[1]);
-      uv1 = um->xy2uv(visimagesc.rows, visimagesc.cols, pt);
-      circle(visimagesc, uv1, 5, CV_RGB(0,255,255), -1);
-
-      imshow("pdf", visimagesc);
-      waitKey(3);
-
 
       //RVIZ visualization
 

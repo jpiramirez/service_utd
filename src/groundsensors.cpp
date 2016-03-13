@@ -21,6 +21,7 @@
 #include <utility>
 #include <algorithm>
 #include <boost/lexical_cast.hpp>
+#include <visualization_msgs/Marker.h>
 
 
 using namespace std;
@@ -31,12 +32,14 @@ class UGS
 {
   ros::NodeHandle nh_;
   ros::Publisher ctrl_pub;
+  ros::Publisher viz_pub;
   vector<ros::Publisher> sm_pub;
   ros::Subscriber pose_sub;
   ros::Subscriber point_sub;
   vector<ros::Subscriber> UAVposes;
   double x, y, z, theta;
   ros::Time ptime, ctime;
+  ros::Timer vtimer;
   ros::Duration d;
   geometry_msgs::PoseStamped odom;
   const gsl_rng_type *T;
@@ -54,6 +57,7 @@ public:
     string odomtopic;
     nh_.param<std::string>("odometry_topic", odomtopic, "p3dx/base_pose_ground_truth");
     pose_sub = nh_.subscribe(odomtopic, 2, &UGS::Callback, this);
+    viz_pub = nh_.advertise<visualization_msgs::Marker>("ugs_visuals", 2);
     //    point_sub = nh_.subscribe("ardrone/setpoint", 2, &UGS::setpointCallback, this);
     ROS_INFO_STREAM("UGS initialized.");
 
@@ -102,10 +106,10 @@ public:
       for(int i=0; i < ugsx.size(); i++)
       {
           sm.header.stamp = ros::Time::now();
-          sm.ul.x = ugsx[i] + detectrad/2.0;
-          sm.ul.y = ugsy[i] + detectrad/2.0;
-          sm.br.x = ugsx[i] - detectrad/2.0;
-          sm.br.y = ugsy[i] - detectrad/2.0;
+          sm.ul.x = ugsx[i] + detectrad;
+          sm.ul.y = ugsy[i] + detectrad;
+          sm.br.x = ugsx[i] - detectrad;
+          sm.br.y = ugsy[i] - detectrad;
           sm.alpha = alpha;
           sm.beta = beta;
           sm.measurement = false;
@@ -113,6 +117,8 @@ public:
                           ugsy[i] << ")");
           smvec.push_back(sm);
       }
+
+      vtimer = nh_.createTimer(ros::Duration(0.5), &UGS::visualCallback, this);
 
       ctime = ros::Time::now();
       ptime = ros::Time::now();
@@ -162,10 +168,10 @@ public:
         if(detectRover(i))
         {
           sm.header.stamp = ros::Time::now();
-          sm.ul.x = ugsx[i] + detectrad/2.0;
-          sm.ul.y = ugsy[i] + detectrad/2.0;
-          sm.br.x = ugsx[i] - detectrad/2.0;
-          sm.br.y = ugsy[i] - detectrad/2.0;
+          sm.ul.x = ugsx[i] + detectrad;
+          sm.ul.y = ugsy[i] + detectrad;
+          sm.br.x = ugsx[i] - detectrad;
+          sm.br.y = ugsy[i] - detectrad;
           sm.alpha = alpha;
           sm.beta = beta;
           sm.measurement = true;
@@ -173,10 +179,10 @@ public:
         else
         {
           sm.header.stamp = ros::Time::now();
-          sm.ul.x = ugsx[i] + detectrad/2.0;
-          sm.ul.y = ugsy[i] + detectrad/2.0;
-          sm.br.x = ugsx[i] - detectrad/2.0;
-          sm.br.y = ugsy[i] - detectrad/2.0;
+          sm.ul.x = ugsx[i] + detectrad;
+          sm.ul.y = ugsy[i] + detectrad;
+          sm.br.x = ugsx[i] - detectrad;
+          sm.br.y = ugsy[i] - detectrad;
           sm.alpha = alpha;
           sm.beta = beta;
           sm.measurement = false;
@@ -213,6 +219,45 @@ public:
       ptime = ctime;
     }
 
+    void visualCallback(const ros::TimerEvent& te)
+    {
+      visualization_msgs::Marker marker;
+
+      marker.header.frame_id = "world";
+      marker.header.stamp = ros::Time();
+      marker.ns = nh_.getNamespace();
+      marker.id = 0;
+      marker.type = visualization_msgs::Marker::CUBE_LIST;
+      marker.action = visualization_msgs::Marker::ADD;
+      marker.pose.position.x = 0;
+      marker.pose.position.y = 0;
+      marker.pose.position.z = 0;
+      marker.pose.orientation.x = 0.0;
+      marker.pose.orientation.y = 0.0;
+      marker.pose.orientation.z = 0.0;
+      marker.pose.orientation.w = 1.0;
+      marker.scale.x = detectrad;
+      marker.scale.y = detectrad;
+      marker.scale.z = 0.1;
+      marker.color.a = 0.5; // Don't forget to set the alpha!
+      marker.color.r = 0.0;
+      marker.color.g = 1.0;
+      marker.color.b = 0.0;
+      vector<geometry_msgs::Point> ptarray;
+      for(int i=0; i < ugsx.size(); i++)
+      {
+        geometry_msgs::Point pt;
+
+        pt.x = ugsx[i];
+        pt.y = ugsy[i];
+        pt.z = 0.3;
+
+        ptarray.push_back(pt);
+      }
+      marker.points = ptarray;
+
+      viz_pub.publish(marker);
+    }
 
   };
 
