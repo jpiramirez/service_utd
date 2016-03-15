@@ -34,7 +34,7 @@ class fakedrone
   double x, y, z, psi;
   double xdot, ydot, zdot;
   double u1, u2, u3, u4;
-  ros::Time ptime, ctime;
+  ros::Time ptime, ctime, startT;
   ros::Duration d;
   geometry_msgs::PoseStamped odom;
   geometry_msgs::Twist control;
@@ -49,12 +49,13 @@ class fakedrone
 public:
   fakedrone()
   {
-    ctrl_sub = nh_.subscribe("cmd_vel", 2, &fakedrone::Callback, this);
+    ctrl_sub = nh_.subscribe("cmd_vel", 1, &fakedrone::Callback, this);
     string odomtopic;
-    pose_pub = nh_.advertise<geometry_msgs::PoseStamped>("ardrone/pose", 2);
+    pose_pub = nh_.advertise<geometry_msgs::PoseStamped>("ardrone/pose", 1);
 //    point_sub = nh_.subscribe("ardrone/setpoint", 2, &fakedrone::setpointCallback, this);
     ROS_INFO_STREAM("Emulated drone created.");
 
+    while(!nh_.hasParam("droneinit"));
     vector<double> initstate;
     nh_.getParam("droneinit", initstate);
     x = initstate[0];
@@ -78,6 +79,7 @@ public:
     {
       ptime = ros::Time::now();
       ctime = ros::Time::now();
+      startT = ros::Time::now();
     }
 
     timer = nh_.createTimer(ros::Duration(0.004), &fakedrone::computePose, this);
@@ -104,6 +106,10 @@ public:
 
       if(t < 0.004)
         t = 0.004;
+
+      // d = ctime - startT;
+      // if(d.toSec() < 5.0)
+      //   return;
 
       odom.header.stamp = ctime;
 

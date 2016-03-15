@@ -126,12 +126,12 @@ class pathPlanner
 public:
   pathPlanner()
   {
-    waypoint_pub = nh_.advertise<geometry_msgs::Vector3>("ardrone/setpoint", 2);
-    map_pub = nh_.advertise<service_utd::ProbMap>("probmap", 2);
-    searchmap_pub = nh_.advertise<service_utd::ProbMap>("searchmap", 2);
+    waypoint_pub = nh_.advertise<geometry_msgs::Vector3>("ardrone/setpoint", 1);
+    map_pub = nh_.advertise<service_utd::ProbMap>("probmap", 1);
+    searchmap_pub = nh_.advertise<service_utd::ProbMap>("searchmap", 1);
     ownpf_pub = nh_.advertise<service_utd::ParticleSet>("particle_set", 1);
-    pose_sub = nh_.subscribe("ardrone/pose", 2, &pathPlanner::Callback, this);
-    object_sub = nh_.subscribe("objectdetected", 2, &pathPlanner::detectionCallback, this);
+    pose_sub = nh_.subscribe("ardrone/pose", 1, &pathPlanner::Callback, this);
+    object_sub = nh_.subscribe("objectdetected", 1, &pathPlanner::detectionCallback, this);
     tgtpose_sub = nh_.subscribe("objectpose", 1, &pathPlanner::targetPositionCallback, this);
     softmeas_sub = nh_.subscribe("ground_obs", 1, &pathPlanner::softMeasurementCallback, this);
     //pclpub = nh_.advertise<PointCloud>("particles", 1);

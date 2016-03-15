@@ -41,9 +41,9 @@ class droneController
 public:
   droneController()
   {
-    ctrl_pub = nh_.advertise<geometry_msgs::Twist>("cmd_vel", 2);
-    pose_sub = nh_.subscribe("ardrone/pose", 2, &droneController::Callback, this);
-    point_sub = nh_.subscribe("ardrone/setpoint", 2, &droneController::setpointCallback, this);
+    ctrl_pub = nh_.advertise<geometry_msgs::Twist>("cmd_vel", 1);
+    pose_sub = nh_.subscribe("ardrone/pose", 1, &droneController::Callback, this);
+    point_sub = nh_.subscribe("ardrone/setpoint", 1, &droneController::setpointCallback, this);
 
     vector<double> gainlist;
     nh_.getParam("drone_setpoint/gains", gainlist);
@@ -104,14 +104,7 @@ public:
       d = ctime - ptime;
       double t = d.toSec();
 
-      if(launch == false)
-      {
-        cycles++;
-        if(cycles > burnin)
-          launch = true;
-      }
-
-     if(t < 0.02)
+     if(t < 0.02 || launch == false)
          return;
 
       x = msg->pose.position.x;
@@ -190,6 +183,7 @@ public:
 
   void setpointCallback(const geometry_msgs::Vector3::ConstPtr& msg)
   {
+      launch = true;
       setx = msg->x;
       sety = msg->y;
       setz = msg->z;

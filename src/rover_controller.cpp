@@ -57,7 +57,7 @@ class roverController
 public:
   roverController()
   {
-    ctrl_pub = nh_.advertise<geometry_msgs::Twist>("cmd_vel", 2);
+    ctrl_pub = nh_.advertise<geometry_msgs::Twist>("cmd_vel", 1);
     string odomtopic;
     nh_.param<std::string>("odometry_topic", odomtopic, "p3dx/base_pose_ground_truth");
     pose_sub = nh_.subscribe(odomtopic, 2, &roverController::Callback, this);
