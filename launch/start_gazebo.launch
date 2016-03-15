@@ -55,13 +55,8 @@
   		a URDF robot -->
   <!--node name="urdf_spawner" pkg="gazebo_ros" type="spawn_model"
   		respawn="false" output="screen" args="-urdf -model p3dx -param robot_description" /-->
-  <rosparam param="roverinit">[10,10,0,0]</rosparam>
-  <node name="fakerover" pkg="service_utd" type="fakerover" output="screen" />
-  <param name="mapname" value="$(find service_utd)/matlabmap.yml" />
-  <param name="odometry_topic" value="p3dx/base_pose_ground_truth" />
-  <node name="rover_controller" pkg="service_utd" type="rover_controller" output="screen">
-    <!--remap from="cmd_vel" to="cmd_vel_mux/input/teleop" /-->
-  </node>
+  <!-- <param name="roverinit">[10,10,0,0]</rosparam> -->
+
   <!-- Just in case we want to replace the Pioneer with a Turtlebot -->
   <!--include file="$(find turtlebot_gazebo)/launch/includes/kobuki.launch.xml">
     <arg name="base" value="kobuki"/>

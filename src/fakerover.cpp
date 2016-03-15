@@ -20,6 +20,7 @@
 #include <utility>
 #include <algorithm>
 #include <boost/lexical_cast.hpp>
+#include "urbanmap.hpp"
 
 
 using namespace std;
@@ -43,6 +44,7 @@ class fakerover
   const gsl_rng_type *T;
   gsl_rng *RNG;
   double v, u;
+  urbanmap *um;
 
   ros::Timer timer;
 
@@ -56,13 +58,6 @@ public:
 //    point_sub = nh_.subscribe("ardrone/setpoint", 2, &fakerover::setpointCallback, this);
     ROS_INFO_STREAM("Emulated rover created.");
 
-    vector<double> initstate;
-    nh_.getParam("roverinit", initstate);
-    x = initstate[0];
-    y = initstate[1];
-    z = initstate[2];
-    theta = initstate[3];
-
     v = 0.0;
     u = 0.0;
 
@@ -72,6 +67,17 @@ public:
     T = gsl_rng_mt19937;
     RNG = gsl_rng_alloc(T);
     gsl_rng_env_setup();
+    gsl_rng_set(RNG, time(NULL));
+
+    um = new urbanmap();
+    string mapname;
+    nh_.param<std::string>("mapname", mapname, "test.yml");
+    um->loadMap(mapname);
+    int snode = gsl_rng_uniform_int(RNG, um->elist.size());
+    theta = 0.0;
+    x = um->coord[snode].x;
+    y = um->coord[snode].y;
+    z = 0;
 
     timer = nh_.createTimer(ros::Duration(0.01), &fakerover::computePose, this);
 
@@ -79,6 +85,7 @@ public:
 
   ~fakerover()
   {
+    delete um;
   }
 
   void Callback(const geometry_msgs::Twist::ConstPtr& msg)

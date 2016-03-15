@@ -139,7 +139,7 @@ add_executable(unittest src/unittest.cpp src/targetstateestimator.cpp src/partic
 add_executable(drone_odom src/drone_odom.cpp)
 add_executable(drone_setpoint src/drone_setpoint.cpp)
 add_executable(rover_controller src/rover_controller.cpp src/urbanmap.cpp)
-add_executable(fakerover src/fakerover.cpp)
+add_executable(fakerover src/fakerover.cpp src/urbanmap.cpp)
 add_executable(fakedrone src/fakedrone.cpp)
 add_executable(clockserver src/clockserver.cpp)
 add_executable(tf2posestamped src/tf2posestamped.cpp)
