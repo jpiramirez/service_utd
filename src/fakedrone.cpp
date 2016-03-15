@@ -102,6 +102,9 @@ public:
       d = ctime - ptime;
       double t = d.toSec();
 
+      if(t < 0.004)
+        t = 0.004;
+
       odom.header.stamp = ctime;
 
       x = x + t*xdot;
