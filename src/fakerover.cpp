@@ -66,7 +66,6 @@ public:
 
     T = gsl_rng_mt19937;
     RNG = gsl_rng_alloc(T);
-    gsl_rng_env_setup();
     gsl_rng_set(RNG, time(NULL));
 
     um = new urbanmap();
@@ -74,6 +73,7 @@ public:
     nh_.param<std::string>("mapname", mapname, "test.yml");
     um->loadMap(mapname);
     int snode = gsl_rng_uniform_int(RNG, um->elist.size());
+    ROS_INFO_STREAM("Rover starts at node " << snode);
     theta = 0.0;
     x = um->coord[snode].x;
     y = um->coord[snode].y;
@@ -100,6 +100,9 @@ public:
       ctime = ros::Time::now();
       d = ctime - ptime;
       double t = d.toSec();
+
+      if(t < 0.01)
+        return;
 
       odom.header.stamp = ctime;
 
