@@ -87,7 +87,7 @@ public:
 
     T = gsl_rng_mt19937;
     RNG = gsl_rng_alloc(T);
-    gsl_rng_env_setup();
+    gsl_rng_set(RNG, time(NULL));
 
     um = new urbanmap();
     string mapname;

@@ -13,7 +13,7 @@ particleFilter::particleFilter(int N, float alpha, float beta, Vec3f upperbnd, V
 
     T = gsl_rng_mt19937;
     r = gsl_rng_alloc(T);
-    gsl_rng_env_setup();
+    gsl_rng_set(r, time(NULL));
 
     // Assuming no prior for p(x)
     for(int i=0; i < N; i++)
@@ -33,9 +33,10 @@ particleFilter::particleFilter(int N, float alpha, float beta, urbanmap um, doub
     this->alpha = alpha;
     this->beta = beta;
 
-    gsl_rng_env_setup();
+
     T = gsl_rng_mt19937;
     r = gsl_rng_alloc(T);
+    gsl_rng_set(r, time(NULL));
 
 
     Vec3f np;

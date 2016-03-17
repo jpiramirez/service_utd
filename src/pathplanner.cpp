@@ -196,8 +196,6 @@ public:
     sety = 0;
     setz = 1.4;
 
-    gsl_rng_default_seed = time(NULL);
-
     nh_.param<double>("alpha", alpha, 0.8);
     nh_.param<double>("beta", beta, 0.2);
     string mapname;
@@ -297,7 +295,7 @@ public:
     collided = false;
     T = gsl_rng_mt19937;
     RNG = gsl_rng_alloc(T);
-    gsl_rng_env_setup();
+    gsl_rng_set(RNG, time(NULL));
 
     isUAVinGraph = false;
 
@@ -898,16 +896,21 @@ public:
 
               if(lineSegmentCollision(uavcoord, estimRad[j], ls, le))
                  coll += 1000.0;
+
           }
 
           Point2d midpt = Point2d(x,y)-0.5*Point2d(ls.x+le.x,ls.y+le.y);
           double dweight = fabs(midpt.x*midpt.x + midpt.y*midpt.y);
 //          weight[k] = um->wayln[k]/(1.0+sc) + coll;
           if(sc < 1.0)
-            weight[k] = 1.0-sc + coll;
-            // weight[k] = 1.0/fabs(sc-0.5) + coll;
+            // weight[k] = 1.0-sc + coll;
+            weight[k] = 1.0/fabs(sc-0.5) + coll;
           else
             weight[k] = coll;
+
+          tie(idx, d) = findClosestEdge(Point2d(x,y));
+          if(k == idx)
+            weight[k] += 1000;
           wt.push_back(weight[k]);
 
           Edge[k] = E(um->elist[k].x, um->elist[k].y);
