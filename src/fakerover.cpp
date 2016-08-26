@@ -20,6 +20,8 @@
 #include <utility>
 #include <algorithm>
 #include <boost/lexical_cast.hpp>
+#include <boost/random/mersenne_twister.hpp>
+#include <boost/random/uniform_int_distribution.hpp>
 #include "urbanmap.hpp"
 
 
@@ -66,13 +68,13 @@ public:
 
     T = gsl_rng_mt19937;
     RNG = gsl_rng_alloc(T);
-    gsl_rng_set(RNG, time(NULL));
+    gsl_rng_set(RNG, std::time(0));
 
     um = new urbanmap();
     string mapname;
     nh_.param<std::string>("mapname", mapname, "test.yml");
     um->loadMap(mapname);
-    int snode = gsl_rng_uniform_int(RNG, um->elist.size());
+    int snode = gsl_rng_uniform_int(RNG, um->coord.size());
     ROS_INFO_STREAM("Rover starts at node " << snode);
     theta = 0.0;
     x = um->coord[snode].x;

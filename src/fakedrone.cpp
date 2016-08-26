@@ -105,7 +105,11 @@ public:
       double t = d.toSec();
 
       if(t < 0.004)
-        t = 0.004;
+      {
+        ptime = ctime;
+        return;
+      }
+        // t = 0.004;
 
       // d = ctime - startT;
       // if(d.toSec() < 5.0)

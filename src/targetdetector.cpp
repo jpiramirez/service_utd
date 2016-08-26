@@ -39,13 +39,13 @@ class ImageConverter
   Vec3i color;
   Vec3f camerapose;
 
-  SimpleBlobDetector *detector;
+  Ptr<SimpleBlobDetector> detector;
   SimpleBlobDetector::Params params;
   vector<KeyPoint> keypoints;
 
   double tgtSize;
   Mat calibMatrix;
-  
+
 public:
   ImageConverter()
     : it_(nh_)
@@ -67,16 +67,16 @@ public:
     ss >> color[1];
     ss >> color[2];
 
-	
+
     ROS_INFO_STREAM("Using color " << color[0] << " " << \
                     color[1] << " " << color[2]);
-	
+
     std::string camname;
     sensor_msgs::CameraInfo caminfo;
 
     if(!camera_calibration_parsers::readCalibration(calibfile, camname, caminfo))
         exit(1);
-    
+
     // There was a way to do the following assignments in a more compact manner
     // but I just can't remember
     calibMatrix.create(3, 3, CV_64FC1);
@@ -111,7 +111,7 @@ public:
     params.minRepeatability = 3;
     params.minDistBetweenBlobs = 100;
 
-    detector = new SimpleBlobDetector(params);
+    detector = SimpleBlobDetector::create(params);
 
     camerapose = Vec3f(0, 0, 0);
   }
@@ -205,7 +205,7 @@ public:
         tgtPose.position.x *= tgtPose.position.z;
         tgtPose.position.y *= tgtPose.position.z;
         cout << keypoints[0].size << endl;
-    
+
         tgtPose.orientation.w = 1;
         tgtPose.orientation.x = 0;
         tgtPose.orientation.y = 0;
@@ -216,9 +216,9 @@ public:
     }
     else
         tfound.data = false;
-      
+
     pose_pub.publish(tfound);
-    
+
     image_pub_.publish(cv_ptr->toImageMsg());
   }
 

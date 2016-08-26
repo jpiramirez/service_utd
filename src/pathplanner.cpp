@@ -82,6 +82,7 @@ class pathPlanner
 //  particleFilter *pf;
   inhParticleFilter *pf;
   urbanmap *um;
+  double maplen;
   float fv, fh;
   float av, ah;
   ros::Timer timer, timerpf;
@@ -203,6 +204,9 @@ public:
 
     um = new urbanmap();
     um->loadMap(mapname);
+    maplen = 0.0;
+    for(int i=0; i < um->wayln.size(); i++)
+      maplen += um->wayln[i];
 
     int npart;
     nh_.param<int>("num_particles", npart, 4000);
@@ -754,18 +758,34 @@ public:
   bool lineSegmentCollision(Point2d pt, double radius, Point2d lineStart, Point2d lineEnd)
   {
       bool coll = false;
-      Point2d vl, vc;
+      // Point2d vl, vc;
+      // vc = pt - lineStart;
+      // vl = lineEnd - lineStart;
+      // if( (vc.x*vl.y-vc.y*vl.x) <= radius*norm(vl) )
+      // {
+      //     if(norm(vc) < radius)
+      //         coll = true;
+      //     if(norm(vl-vc) < radius)
+      //         coll = true;
+      //     if(!coll && vc.dot(vl) >= 0.0 && vc.dot(vl) <= vl.dot(vl) )
+      //         coll = true;
+      // }
+      Point2d vl, vc, ve;
       vc = pt - lineStart;
       vl = lineEnd - lineStart;
-      if( (vc.x*vl.y-vc.y*vl.x) <= radius*norm(vl) )
-      {
-          if(norm(vc) < radius)
-              coll = true;
-          if(norm(vl-vc) < radius)
-              coll = true;
-          if(!coll && vc.dot(vl) >= 0.0 && vc.dot(vl) <= vl.dot(vl) )
-              coll = true;
-      }
+      ve = pt - lineEnd;
+      if(norm(vc) < radius)
+        return true;
+      if(norm(ve) < radius)
+        return true;
+      double len = norm(vl);
+      Point2d vln = Point2d(vl.x/len, vl.y/len);
+      double proj = vc.dot(vln);
+      Point2d pvec = proj*vln;
+      Point2d rej = vc - pvec;
+
+      if(proj > 0.0 && proj < len && norm(rej) <= radius)
+        return true;
 
 
       return coll;
@@ -856,6 +876,8 @@ public:
       double timeToDest = norm(Point2d(wp_msg.x-x, wp_msg.y-y))/norm(ownVel);
       ROS_DEBUG_STREAM("Time to dest " << timeToDest);
       vector<double> estimRad;
+      // Lookahead horizon
+      int numTravEdges = horizonparam;
 
       for(int k=0; k < um->elist.size(); k++)
       {
@@ -902,11 +924,13 @@ public:
           Point2d midpt = Point2d(x,y)-0.5*Point2d(ls.x+le.x,ls.y+le.y);
           double dweight = fabs(midpt.x*midpt.x + midpt.y*midpt.y);
 //          weight[k] = um->wayln[k]/(1.0+sc) + coll;
-          if(sc < 1.0)
+          // if(sc < 1.0)
             // weight[k] = 1.0-sc + coll;
-            weight[k] = 1.0/fabs(sc-0.5) + coll;
-          else
-            weight[k] = coll;
+            // weight[k] = 1.0/fabs(sc-0.5) + coll;
+         sc = sc*um->wayln[k]/maplen;
+            weight[k] = fabs(sc - 0.5/(double)horizonparam) + coll;
+          // else
+            // weight[k] = coll;
 
           tie(idx, d) = findClosestEdge(Point2d(x,y));
           if(k == idx)
@@ -981,9 +1005,6 @@ public:
 
       graph_traits<Graph>::vertex_iterator vi, vend;
       vector<vertex_descriptor> validNodes;
-
-      // Lookahead horizon
-      int numTravEdges = horizonparam;
 
       for(tie(vi, vend) = vertices(G); vi!=vend; ++vi)
       {
@@ -1248,6 +1269,7 @@ public:
       {
         geometry_msgs::Point pt;
         if(pf->w[i] >= meanw)
+        // if(weight[(int)pf->pp[i][0]] >= 1000)
         {
           Point2d p = um->ep2coord((int)pf->pp[i][0], pf->pp[i][1]);
           pt.x = p.x;
@@ -1285,6 +1307,7 @@ public:
       {
         geometry_msgs::Point pt;
         if(pf->w[i] < meanw)
+        // if(weight[(int)pf->pp[i][0]] < 1000)
         {
           Point2d p = um->ep2coord((int)pf->pp[i][0], pf->pp[i][1]);
           pt.x = p.x;
