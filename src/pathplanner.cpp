@@ -104,10 +104,12 @@ class pathPlanner
   bool collided;
   bool isUAVinGraph;
   int cruiseAltitude;
+  bool planMode, executeMode;
 
   double collisionRadius, detectionRadius;
 
   Point2d pt_from, pt_to;
+  vector<int> flightPlan;
 
   const gsl_rng_type *T;
   gsl_rng *RNG;
@@ -238,7 +240,7 @@ public:
 
 //    timer = nh_.createTimer(ros::Duration(0.2), &pathPlanner::computeWaypoint, this);
     timerpf = nh_.createTimer(ros::Duration(0.5), &pathPlanner::broadcastParticles, this);
-    timer = nh_.createTimer(ros::Duration(0.5), &pathPlanner::pathPlanOverMap, this);
+    timer = nh_.createTimer(ros::Duration(0.2), &pathPlanner::publishWaypoint, this);
 
     ptime = ros::Time::now();
     ctime = ros::Time::now();
@@ -311,6 +313,9 @@ public:
     std::string myname = nh_.getNamespace();
     myname = myname.erase(0,5);
     myId = atoi(myname.c_str());
+
+    executeMode = false;
+    flightPlan.clear();
   }
 
   ~pathPlanner()
@@ -802,7 +807,312 @@ public:
       return mle;
   }
 
-  void pathPlanOverMap(const ros::TimerEvent& te)
+  void publishWaypoint(const ros::TimerEvent& te)
+  {
+    bool coll = false;
+    bool climb = false;
+    Point2d pt;
+
+    // if(executeMode == true)
+    // {
+    //   if(flightPlan.empty())
+    //   {
+    //     executeMode = false;
+    //   }
+    // }
+    // else if(isUAVinGraph)
+    // {
+    //   planPath();
+    //   executeMode = true;
+    // }
+
+    if(flightPlan.empty() && isUAVinGraph)
+    {
+      planPath();
+    }
+
+
+
+    for(int i=0; i < otherUAVst.size(); i++)
+    {
+        if(norm(Point2d(x,y) - Point2d(otherUAVst[i][0], otherUAVst[i][1])) < 5.0)
+        {
+            coll = true;
+            if(norm(Point2d(x,y)) < norm(Point2d(otherUAVst[i][0], otherUAVst[i][1])))
+                climb = true;
+        }
+    }
+
+    if(cruiseAltitude == 0)
+    {
+        if(coll)
+        {
+            if(climb)
+                cruiseAltitude = 1;
+            else
+                cruiseAltitude = -1;
+        }
+    }
+    else if(cruiseAltitude == 1)
+    {
+        if(!coll)
+            cruiseAltitude = 0;
+    }
+        else
+    {
+        if(!coll)
+            cruiseAltitude = 0;
+    }
+
+//      if(coll)
+//      {
+//          pt = Point2d(x,y);
+//          ROS_INFO_STREAM("Collision imminent, stopping.");
+//      }
+
+    int idx;
+    double d;
+
+
+    if(!(isUAVinGraph || targetFound))
+    {
+        tie(idx, d) = findClosestNode(Point2d(x,y));
+        if(norm(Point2d(x,y) - um->coord[idx]) > 0.1)
+        {
+            wp_msg.x = um->coord[idx].x;
+            wp_msg.y = um->coord[idx].y;
+            wp_msg.z = baseAltitude;
+            cout << "STATE: Approaching the road network" << endl;
+            pt_to = um->coord[idx];
+        }
+        else
+            isUAVinGraph = true;
+    }
+    else
+    {
+
+        if(targetFound)
+        {
+            wp_msg.x = x+targetPosition.position.x;
+            wp_msg.y = y+targetPosition.position.y;
+            Vec3f tgtpos = pf->meanEstim(*um);
+            Point2d tgtestim = um->ep2coord((int)tgtpos[0], tgtpos[1]);
+            wp_msg.x = tgtestim.x;
+            wp_msg.y = tgtestim.y;
+            cout << "STATE: Target detected, following it." << endl;
+        }
+        else
+        {
+            if(norm(Point2d(x,y) - um->coord[flightPlan.back()]) < 0.1)
+            {
+                flightPlan.pop_back();
+                if(flightPlan.empty())
+                  return;
+            }
+            pt = um->coord[flightPlan.back()];
+
+            wp_msg.x = pt.x;
+            wp_msg.y = pt.y;
+            pt_from = pt_to;
+            pt_to = pt;
+            cout << "STATE: Traveling to the next waypoint" << endl;
+
+        }
+    }
+
+
+    switch(cruiseAltitude)
+    {
+      case(1):
+      if(batchSimulation)
+        wp_msg.z = baseAltitude + myId - 1;
+      break;
+      case(-1):
+      if(batchSimulation)
+        wp_msg.z = baseAltitude + myId - 1;
+      break;
+      default:
+      wp_msg.z = baseAltitude;
+      break;
+    }
+
+    if(coll)
+      cout << "UAV " << myId << " climbing to " << wp_msg.z << endl;
+
+    waypoint_pub.publish(wp_msg);
+
+
+
+    //RVIZ visualization
+
+    visualization_msgs::Marker marker;
+    vector<visualization_msgs::Marker> markarr;
+    visualization_msgs::MarkerArray markerarray;
+
+    // Drawing the particle filter
+    double meanw = 0.0;
+    for(int i=0; i < pf->N; i++)
+    {
+        if(!isnan(pf->w[i]))
+          meanw += pf->w[i];
+    }
+    meanw /= (double)pf->N;
+
+    marker.header.frame_id = "world";
+    marker.header.stamp = ros::Time();
+    marker.ns = nh_.getNamespace();
+    marker.id = 0;
+    marker.type = visualization_msgs::Marker::SPHERE_LIST;
+    marker.action = visualization_msgs::Marker::ADD;
+    marker.pose.position.x = 0;
+    marker.pose.position.y = 0;
+    marker.pose.position.z = 0;
+    marker.pose.orientation.x = 0.0;
+    marker.pose.orientation.y = 0.0;
+    marker.pose.orientation.z = 0.0;
+    marker.pose.orientation.w = 1.0;
+    marker.scale.x = 0.2;
+    marker.scale.y = 0.2;
+    marker.scale.z = 0.2;
+    marker.color.a = 1.0; // Don't forget to set the alpha!
+    marker.color.r = 1.0;
+    marker.color.g = 0.0;
+    marker.color.b = 1.0;
+    vector<geometry_msgs::Point> ptarray;
+    for(int i=0; i < pf->N; i++)
+    {
+      geometry_msgs::Point pt;
+      if(pf->w[i] >= meanw)
+      // if(weight[(int)pf->pp[i][0]] >= 1000)
+      {
+        Point2d p = um->ep2coord((int)pf->pp[i][0], pf->pp[i][1]);
+        pt.x = p.x;
+        pt.y = p.y;
+        pt.z = 0.2;
+        ptarray.push_back(pt);
+      }
+    }
+    marker.points = ptarray;
+
+    markarr.push_back(marker);
+
+    marker.header.frame_id = "world";
+    marker.header.stamp = ros::Time();
+    marker.ns = nh_.getNamespace();
+    marker.id = 1;
+    marker.type = visualization_msgs::Marker::SPHERE_LIST;
+    marker.action = visualization_msgs::Marker::ADD;
+    marker.pose.position.x = 0;
+    marker.pose.position.y = 0;
+    marker.pose.position.z = 0;
+    marker.pose.orientation.x = 0.0;
+    marker.pose.orientation.y = 0.0;
+    marker.pose.orientation.z = 0.0;
+    marker.pose.orientation.w = 1.0;
+    marker.scale.x = 0.2;
+    marker.scale.y = 0.2;
+    marker.scale.z = 0.2;
+    marker.color.a = 1.0; // Don't forget to set the alpha!
+    marker.color.r = 0.0;
+    marker.color.g = 1.0;
+    marker.color.b = 1.0;
+    ptarray.clear();
+    for(int i=0; i < pf->N; i++)
+    {
+      geometry_msgs::Point pt;
+      if(pf->w[i] < meanw)
+      // if(weight[(int)pf->pp[i][0]] < 1000)
+      {
+        Point2d p = um->ep2coord((int)pf->pp[i][0], pf->pp[i][1]);
+        pt.x = p.x;
+        pt.y = p.y;
+        pt.z = 0.2;
+        ptarray.push_back(pt);
+      }
+    }
+    marker.points = ptarray;
+
+    markarr.push_back(marker);
+
+    // Drawing the quad
+    marker.header.frame_id = "world";
+    marker.header.stamp = ros::Time();
+    marker.ns = nh_.getNamespace();
+    marker.id = 2;
+    marker.type = visualization_msgs::Marker::MESH_RESOURCE;
+    marker.action = visualization_msgs::Marker::ADD;
+    marker.pose.position.x = ownPose.pose.position.x;
+    marker.pose.position.y = ownPose.pose.position.y;
+    marker.pose.position.z = ownPose.pose.position.z;
+    marker.pose.orientation.x = ownPose.pose.orientation.x;
+    marker.pose.orientation.y = ownPose.pose.orientation.y;
+    marker.pose.orientation.z = ownPose.pose.orientation.z;
+    marker.pose.orientation.w = ownPose.pose.orientation.w;
+    marker.scale.x = 3.0;
+    marker.scale.y = 3.0;
+    marker.scale.z = 3.0;
+    marker.color.a = 0.0; // Don't forget to set the alpha!
+    marker.color.r = 0.0;
+    marker.color.g = 0.0;
+    marker.color.b = 0.0;
+    marker.mesh_use_embedded_materials = true;
+    marker.mesh_resource = "package://service_utd/meshes/quadrotor_base.dae";
+
+    markarr.push_back(marker);
+
+    marker.header.frame_id = "world";
+    marker.header.stamp = ros::Time();
+    marker.ns = nh_.getNamespace();
+    marker.id = 3;
+    marker.type = visualization_msgs::Marker::TEXT_VIEW_FACING;
+    marker.action = visualization_msgs::Marker::ADD;
+    marker.pose.position.x = ownPose.pose.position.x;
+    marker.pose.position.y = ownPose.pose.position.y;
+    marker.pose.position.z = ownPose.pose.position.z+0.5;
+    marker.pose.orientation.x = ownPose.pose.orientation.x;
+    marker.pose.orientation.y = ownPose.pose.orientation.y;
+    marker.pose.orientation.z = ownPose.pose.orientation.z;
+    marker.pose.orientation.w = ownPose.pose.orientation.w;
+    marker.scale.x = 2.0;
+    marker.scale.y = 2.0;
+    marker.scale.z = 1.0;
+    marker.color.a = 1.0; // Don't forget to set the alpha!
+    marker.color.r = 0.0;
+    marker.color.g = 1.0;
+    marker.color.b = 0.0;
+    marker.text = nh_.getNamespace();
+    markarr.push_back(marker);
+
+    marker.header.frame_id = "world";
+    marker.header.stamp = ros::Time();
+    marker.ns = nh_.getNamespace();
+    marker.id = 4;
+    marker.type = visualization_msgs::Marker::SPHERE;
+    marker.action = visualization_msgs::Marker::ADD;
+    marker.pose.position.x = ownPose.pose.position.x;
+    marker.pose.position.y = ownPose.pose.position.y;
+    marker.pose.position.z = ownPose.pose.position.z;
+    marker.pose.orientation.x = ownPose.pose.orientation.x;
+    marker.pose.orientation.y = ownPose.pose.orientation.y;
+    marker.pose.orientation.z = ownPose.pose.orientation.z;
+    marker.pose.orientation.w = ownPose.pose.orientation.w;
+    marker.scale.x = collisionRadius;
+    marker.scale.y = collisionRadius;
+    marker.scale.z = collisionRadius;
+    marker.color.a = 0.25; // Don't forget to set the alpha!
+    marker.color.r = 1.0;
+    marker.color.g = 0.0;
+    marker.color.b = 0.0;
+    marker.text = nh_.getNamespace();
+    markarr.push_back(marker);
+
+    markerarray.markers = markarr;
+    viz_pub.publish(markerarray);
+
+//      um->coord.pop_back();
+  }
+
+  void planPath()
   {
 
       typedef adjacency_list<vecS, vecS, undirectedS, \
@@ -824,20 +1134,6 @@ public:
 
       int idx;
       double d;
-
-
-
-      // PointCloud::Ptr msg (new PointCloud);
-      //   msg->header.frame_id = "world";
-      //   msg->height = msg->width = 1;
-      //   msg->width = pf->N;
-      //   for(int i=0; i < pf->N; i++)
-      //   {
-      //       Point2d ptmp = um->ep2coord((int)pf->pp[i][0], pf->pp[i][1]);
-      //       msg->points.push_back (pcl::PointXYZ(ptmp.x, ptmp.y, 0.0));
-      //   }
-      //   msg->header.stamp = ros::Time::now().toNSec();
-      //   pclpub.publish (msg);
 
       tie(idx, d) = findClosestEdge(Point2d(x,y));
       if(d < 0.1)
@@ -926,15 +1222,17 @@ public:
 //          weight[k] = um->wayln[k]/(1.0+sc) + coll;
           // if(sc < 1.0)
             // weight[k] = 1.0-sc + coll;
-            // weight[k] = 1.0/fabs(sc-0.5) + coll;
+
+        /// Cost Function
          sc = sc*um->wayln[k]/maplen;
-            weight[k] = fabs(sc - 0.5/(double)horizonparam) + coll;
+        //  weight[k] = fabs(1.0-sc) + coll;
+            weight[k] = fabs(sc - 0.5/(double)(horizonparam)) + coll;
           // else
             // weight[k] = coll;
 
-          tie(idx, d) = findClosestEdge(Point2d(x,y));
-          if(k == idx)
-            weight[k] += 1000;
+          // tie(idx, d) = findClosestEdge(Point2d(x,y));
+          // if(k == idx)
+          //   weight[k] += 1000;
           wt.push_back(weight[k]);
 
           Edge[k] = E(um->elist[k].x, um->elist[k].y);
@@ -952,45 +1250,12 @@ public:
 
       vertex_descriptor searchStart;
       tie(idx, d) = findClosestNode(Point2d(x,y));
-//      if(norm(um->coord[idx] - Point2d(x,y)) > 0.5)
-//      {
-//          int clEdge;
-//          tie(clEdge, idx) = findClosestEdge(Point2d(x,y));
-
-//          Point2d ls, le1, le2;
-//          ls = Point2d(x,y);
-//          le1 = um->coord[um->elist[clEdge].x];
-//          le2 = um->coord[um->elist[clEdge].y];
-//          double sc1 = 0, sc2 = 0;
-
-//          // Checking if any particles fit in the new edges to we can compute
-//          // proper edge weights.
-//          for(int j=0; j < pf->N; j++)
-//          {
-
-//              Point2d partLoc = um->ep2coord((int)pf->pp[j][0], pf->pp[j][1]);
-//              bool isPinE = lineSegmentCollision(partLoc, 0.5, ls, le1);
-//              if(isPinE)
-//                    sc1 += pf->w[j];
-//              isPinE = lineSegmentCollision(partLoc, 0.5, ls, le2);
-//              if(isPinE)
-//                    sc2 += pf->w[j];
-
-//          }
-//          add_edge(um->elist[clEdge].x, um->coord.size(), 1-sc1, G);
-//          tie(e, inserted) = add_edge(um->elist[clEdge].y, um->coord.size(), 1-sc2, G);
-//          searchStart = target(e, G);
-//      }
-//      else
-          searchStart = idx;
+      searchStart = idx;
 
       IndexMap index = get(vertex_index, G);
 
       ROS_DEBUG_STREAM("edges(g) = ");
       graph_traits<Graph>::edge_iterator ei, ei_end;
-//      for (tie(ei, ei_end) = edges(G); ei != ei_end; ++ei)
-//          std::cout << "(" << index[source(*ei, G)] \
-//                    << "," << index[target(*ei, G)] << ") ";
 
       vector<double> dist(num_vertices(G));
       vector<vertex_descriptor> p(num_vertices(G));
@@ -1037,11 +1302,11 @@ public:
 
       // If there are no particles within 2 edges of the starting node, find the shortest path
       // to the MLE
-      if(fabs(mindist-(double)numTravEdges) < 1e-6)
-      {
-          tie(idx, d) = findClosestNode(mlePos);
-          minidx = idx;
-      }
+      // if(fabs(mindist-(double)numTravEdges) < 1e-80)
+      // {
+      //     tie(idx, d) = findClosestNode(mlePos);
+      //     minidx = idx;
+      // }
 
       ROS_DEBUG_STREAM("Minimum distance is " << mindist << " to node " << minidx << " at " << um->coord[minidx]);
 
@@ -1061,106 +1326,9 @@ public:
       }
 
       pt = um->coord[idxpath[idxpath.size()-2]];
-      bool coll = false;
-      bool climb = false;
-      for(int i=0; i < otherUAVst.size(); i++)
-      {
-          if(norm(Point2d(x,y) - Point2d(otherUAVst[i][0], otherUAVst[i][1])) < collisionRadius)
-          {
-              coll = true;
-              if(norm(Point2d(x,y)) < norm(Point2d(otherUAVst[i][0], otherUAVst[i][1])))
-                  climb = true;
-          }
-      }
 
-      if(cruiseAltitude == 0)
-      {
-          if(coll)
-          {
-              if(climb)
-                  cruiseAltitude = 1;
-              else
-                  cruiseAltitude = -1;
-          }
-      }
-      else if(cruiseAltitude == 1)
-      {
-          if(!coll)
-              cruiseAltitude = 0;
-      }
-          else
-      {
-          if(!coll)
-              cruiseAltitude = 0;
-      }
-
-//      if(coll)
-//      {
-//          pt = Point2d(x,y);
-//          ROS_INFO_STREAM("Collision imminent, stopping.");
-//      }
-
-      tie(idx, d) = findClosestNode(Point2d(x,y));
-
-      if(!isUAVinGraph && !targetFound)
-      {
-          tie(idx, d) = findClosestNode(Point2d(x,y));
-          if(norm(Point2d(x,y) - um->coord[idx]) > 0.1)
-          {
-              wp_msg.x = um->coord[idx].x;
-              wp_msg.y = um->coord[idx].y;
-              wp_msg.z = baseAltitude;
-              cout << "STATE: Approaching the road network" << endl;
-              pt_to = um->coord[idx];
-          }
-          else
-              isUAVinGraph = true;
-      }
-      else
-      {
-
-
-          if(targetFound)
-          {
-              wp_msg.x = x+targetPosition.position.x;
-              wp_msg.y = y+targetPosition.position.y;
-              Vec3f tgtpos = pf->meanEstim(*um);
-              Point2d tgtestim = um->ep2coord((int)tgtpos[0], tgtpos[1]);
-              wp_msg.x = tgtestim.x;
-              wp_msg.y = tgtestim.y;
-              cout << "STATE: Target detected, following it." << endl;
-          }
-          else if(norm(Point2d(x,y) - um->coord[idx]) < 0.1)
-          {
-
-              wp_msg.x = pt.x;
-              wp_msg.y = pt.y;
-              pt_from = pt_to;
-              pt_to = pt;
-              cout << "STATE: Traveling to the next waypoint" << endl;
-          }
-      }
-
-
-      switch(cruiseAltitude)
-      {
-        case(1):
-        if(batchSimulation)
-          wp_msg.z = baseAltitude + myId - 1;
-        break;
-        case(-1):
-        if(batchSimulation)
-          wp_msg.z = baseAltitude + myId - 1;
-        break;
-        default:
-        wp_msg.z = baseAltitude;
-        break;
-      }
-
-      if(coll)
-        cout << "UAV " << myId << " climbing to " << wp_msg.z << endl;
-
-      waypoint_pub.publish(wp_msg);
+      flightPlan = idxpath;
+      // flightPlan.pop_back();
 
       if(displayMap)
       {
@@ -1194,11 +1362,8 @@ public:
           cv::circle(visimagesc, uv2, 3, CV_RGB(255,255,255));
         }
 
-        uv1 = um->xy2uv(visimagesc.rows, visimagesc.cols, Point2d(x,y));
-        uv2 = um->xy2uv(visimagesc.rows, visimagesc.cols, Point2d(x+cos(proj),y+sin(proj)));
-        cv::line(visimagesc, uv1, uv2, CV_RGB(0,0,255), 3);
-
         uv1 = um->xy2uv(visimagesc.rows, visimagesc.cols, um->coord[idxpath[0]]);
+        cv::circle(visimagesc, uv1, 8, CV_RGB(0,0,0));
         for(int i=1; i < idxpath.size(); i++)
         {
           uv2 = um->xy2uv(visimagesc.rows, visimagesc.cols, um->coord[idxpath[i]]);
@@ -1206,14 +1371,15 @@ public:
           uv1 = uv2;
         }
 
+        double rad;
         for(int j=0; j < otherUAVst.size(); j++)
         {
           if(otherUAVvisible[j] == false)
           continue;
           pt = Point2d(otherUAVst[j][0], otherUAVst[j][1]);
-          uv1 = um->xy2uv(visimagesc.rows, visimagesc.cols, pt);
-          int rad = estimRad[j]*visimagesc.rows/(um->ne.x - um->sw.x);
-          cv::circle(visimagesc, uv1, rad, CV_RGB(100,0,0), 2);
+          // uv1 = um->xy2uv(visimagesc.rows, visimagesc.cols, pt);
+          // // int rad = estimRad[j]*visimagesc.rows/(um->ne.x - um->sw.x);
+          // // cv::circle(visimagesc, uv1, rad, CV_RGB(100,0,0), 2);
           rad = detectionRadius*visimagesc.rows/(um->ne.x - um->sw.x);
           cv::circle(visimagesc, uv1, rad, CV_RGB(100,100,100), 2);
           rad = collisionRadius*visimagesc.rows/(um->ne.x - um->sw.x);
@@ -1228,174 +1394,6 @@ public:
         imshow("pdf", visimagesc);
         waitKey(3);
       }
-
-      //RVIZ visualization
-
-      visualization_msgs::Marker marker;
-      vector<visualization_msgs::Marker> markarr;
-      visualization_msgs::MarkerArray markerarray;
-
-      // Drawing the particle filter
-      double meanw = 0.0;
-      for(int i=0; i < pf->N; i++)
-      {
-          if(!isnan(pf->w[i]))
-            meanw += pf->w[i];
-      }
-      meanw /= (double)pf->N;
-
-      marker.header.frame_id = "world";
-      marker.header.stamp = ros::Time();
-      marker.ns = nh_.getNamespace();
-      marker.id = 0;
-      marker.type = visualization_msgs::Marker::SPHERE_LIST;
-      marker.action = visualization_msgs::Marker::ADD;
-      marker.pose.position.x = 0;
-      marker.pose.position.y = 0;
-      marker.pose.position.z = 0;
-      marker.pose.orientation.x = 0.0;
-      marker.pose.orientation.y = 0.0;
-      marker.pose.orientation.z = 0.0;
-      marker.pose.orientation.w = 1.0;
-      marker.scale.x = 0.2;
-      marker.scale.y = 0.2;
-      marker.scale.z = 0.2;
-      marker.color.a = 1.0; // Don't forget to set the alpha!
-      marker.color.r = 1.0;
-      marker.color.g = 0.0;
-      marker.color.b = 1.0;
-      vector<geometry_msgs::Point> ptarray;
-      for(int i=0; i < pf->N; i++)
-      {
-        geometry_msgs::Point pt;
-        if(pf->w[i] >= meanw)
-        // if(weight[(int)pf->pp[i][0]] >= 1000)
-        {
-          Point2d p = um->ep2coord((int)pf->pp[i][0], pf->pp[i][1]);
-          pt.x = p.x;
-          pt.y = p.y;
-          pt.z = 0.2;
-          ptarray.push_back(pt);
-        }
-      }
-      marker.points = ptarray;
-
-      markarr.push_back(marker);
-
-      marker.header.frame_id = "world";
-      marker.header.stamp = ros::Time();
-      marker.ns = nh_.getNamespace();
-      marker.id = 1;
-      marker.type = visualization_msgs::Marker::SPHERE_LIST;
-      marker.action = visualization_msgs::Marker::ADD;
-      marker.pose.position.x = 0;
-      marker.pose.position.y = 0;
-      marker.pose.position.z = 0;
-      marker.pose.orientation.x = 0.0;
-      marker.pose.orientation.y = 0.0;
-      marker.pose.orientation.z = 0.0;
-      marker.pose.orientation.w = 1.0;
-      marker.scale.x = 0.2;
-      marker.scale.y = 0.2;
-      marker.scale.z = 0.2;
-      marker.color.a = 1.0; // Don't forget to set the alpha!
-      marker.color.r = 0.0;
-      marker.color.g = 1.0;
-      marker.color.b = 1.0;
-      ptarray.clear();
-      for(int i=0; i < pf->N; i++)
-      {
-        geometry_msgs::Point pt;
-        if(pf->w[i] < meanw)
-        // if(weight[(int)pf->pp[i][0]] < 1000)
-        {
-          Point2d p = um->ep2coord((int)pf->pp[i][0], pf->pp[i][1]);
-          pt.x = p.x;
-          pt.y = p.y;
-          pt.z = 0.2;
-          ptarray.push_back(pt);
-        }
-      }
-      marker.points = ptarray;
-
-      markarr.push_back(marker);
-
-      // Drawing the quad
-      marker.header.frame_id = "world";
-      marker.header.stamp = ros::Time();
-      marker.ns = nh_.getNamespace();
-      marker.id = 2;
-      marker.type = visualization_msgs::Marker::MESH_RESOURCE;
-      marker.action = visualization_msgs::Marker::ADD;
-      marker.pose.position.x = ownPose.pose.position.x;
-      marker.pose.position.y = ownPose.pose.position.y;
-      marker.pose.position.z = ownPose.pose.position.z;
-      marker.pose.orientation.x = ownPose.pose.orientation.x;
-      marker.pose.orientation.y = ownPose.pose.orientation.y;
-      marker.pose.orientation.z = ownPose.pose.orientation.z;
-      marker.pose.orientation.w = ownPose.pose.orientation.w;
-      marker.scale.x = 3.0;
-      marker.scale.y = 3.0;
-      marker.scale.z = 3.0;
-      marker.color.a = 0.0; // Don't forget to set the alpha!
-      marker.color.r = 0.0;
-      marker.color.g = 0.0;
-      marker.color.b = 0.0;
-      marker.mesh_use_embedded_materials = true;
-      marker.mesh_resource = "package://service_utd/meshes/quadrotor_base.dae";
-
-      markarr.push_back(marker);
-
-      marker.header.frame_id = "world";
-      marker.header.stamp = ros::Time();
-      marker.ns = nh_.getNamespace();
-      marker.id = 3;
-      marker.type = visualization_msgs::Marker::TEXT_VIEW_FACING;
-      marker.action = visualization_msgs::Marker::ADD;
-      marker.pose.position.x = ownPose.pose.position.x;
-      marker.pose.position.y = ownPose.pose.position.y;
-      marker.pose.position.z = ownPose.pose.position.z+0.5;
-      marker.pose.orientation.x = ownPose.pose.orientation.x;
-      marker.pose.orientation.y = ownPose.pose.orientation.y;
-      marker.pose.orientation.z = ownPose.pose.orientation.z;
-      marker.pose.orientation.w = ownPose.pose.orientation.w;
-      marker.scale.x = 2.0;
-      marker.scale.y = 2.0;
-      marker.scale.z = 1.0;
-      marker.color.a = 1.0; // Don't forget to set the alpha!
-      marker.color.r = 0.0;
-      marker.color.g = 1.0;
-      marker.color.b = 0.0;
-      marker.text = nh_.getNamespace();
-      markarr.push_back(marker);
-
-      marker.header.frame_id = "world";
-      marker.header.stamp = ros::Time();
-      marker.ns = nh_.getNamespace();
-      marker.id = 4;
-      marker.type = visualization_msgs::Marker::SPHERE;
-      marker.action = visualization_msgs::Marker::ADD;
-      marker.pose.position.x = ownPose.pose.position.x;
-      marker.pose.position.y = ownPose.pose.position.y;
-      marker.pose.position.z = ownPose.pose.position.z;
-      marker.pose.orientation.x = ownPose.pose.orientation.x;
-      marker.pose.orientation.y = ownPose.pose.orientation.y;
-      marker.pose.orientation.z = ownPose.pose.orientation.z;
-      marker.pose.orientation.w = ownPose.pose.orientation.w;
-      marker.scale.x = collisionRadius;
-      marker.scale.y = collisionRadius;
-      marker.scale.z = collisionRadius;
-      marker.color.a = 0.25; // Don't forget to set the alpha!
-      marker.color.r = 1.0;
-      marker.color.g = 0.0;
-      marker.color.b = 0.0;
-      marker.text = nh_.getNamespace();
-      markarr.push_back(marker);
-
-      markerarray.markers = markarr;
-      viz_pub.publish(markerarray);
-
-//      um->coord.pop_back();
 
       delete[] weight;
       delete[] Edge;

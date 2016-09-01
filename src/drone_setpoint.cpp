@@ -152,17 +152,17 @@ public:
       control.angular.y = 0;
       control.angular.z = -Ky*ah;
 
-      if(fabs(control.linear.x) > 2.0)
+      if(fabs(control.linear.x) > 0.5)
       {
-        control.linear.x = copysign(2.0, control.linear.x);
+        control.linear.x = copysign(0.5, control.linear.x);
       }
-      if(fabs(control.linear.y) > 2.0)
+      if(fabs(control.linear.y) > 0.5)
       {
-        control.linear.y = copysign(2.0, control.linear.y);
+        control.linear.y = copysign(0.5, control.linear.y);
       }
-      if(fabs(control.linear.z) > 2.0)
+      if(fabs(control.linear.z) > 0.5)
       {
-        control.linear.z = copysign(2.0, control.linear.z);
+        control.linear.z = copysign(0.5, control.linear.z);
       }
       if(fabs(control.angular.z) > 2.0)
       {

@@ -4,8 +4,8 @@
 
 <!-- <include file="$(find service_utd)/launch/quadrotor_empty_world.launch" /> -->
 <param name="/use_sim_time" value="true" />
-<param name="timefactor" value="5" />
-<param name="tickspersec" value="500" />
+<param name="timefactor" value="10" />
+<param name="tickspersec" value="250" />
 <node name="clockserver" pkg="service_utd" type="clockserver" output="screen" required="true" />
 
 <!--group ns="uav1">
