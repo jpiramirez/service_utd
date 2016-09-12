@@ -1377,7 +1377,7 @@ public:
           if(otherUAVvisible[j] == false)
           continue;
           pt = Point2d(otherUAVst[j][0], otherUAVst[j][1]);
-          // uv1 = um->xy2uv(visimagesc.rows, visimagesc.cols, pt);
+          uv1 = um->xy2uv(visimagesc.rows, visimagesc.cols, pt);
           // // int rad = estimRad[j]*visimagesc.rows/(um->ne.x - um->sw.x);
           // // cv::circle(visimagesc, uv1, rad, CV_RGB(100,0,0), 2);
           rad = detectionRadius*visimagesc.rows/(um->ne.x - um->sw.x);
