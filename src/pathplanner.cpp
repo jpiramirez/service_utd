@@ -126,6 +126,8 @@ class pathPlanner
   int horizonparam;
   bool displayMap;
 
+  long int totalIter;
+
 public:
   pathPlanner()
   {
@@ -316,6 +318,8 @@ public:
 
     executeMode = false;
     flightPlan.clear();
+
+    totalIter = 0;
   }
 
   ~pathPlanner()
@@ -426,7 +430,7 @@ public:
           }
       }
 
-      if(wsum > this->confThresh)
+      if(detected)//wsum > this->confThresh)
       {
           this->targetFound = true;
           ROS_INFO_STREAM("Target found by UAV " << this->myId);
@@ -442,7 +446,8 @@ public:
               stt = stt + ".txt";
               ofstream fs;
               fs.open(stt.c_str());
-              fs << simlength.toSec() << endl;
+              //fs << simlength.toSec() << endl;
+			  fs << 0.2*(double)totalIter << endl;
               fs.close();
               ROS_INFO_STREAM("Acquisition time recorded as " << stt);
               ros::shutdown();
@@ -454,16 +459,16 @@ public:
               isUAVinGraph = false;
           targetFound = false;
 
-          // if(batchSimulation)
-          // {
-          //   endT = ros::Time::now();
-          //   simlength = endT - startT;
-          //   if(simlength.toSec() > 1000)
-          //   {
-          //     ROS_INFO_STREAM("Declaring target lost.");
-          //     ros::shutdown();
-          //   }
-          // }
+           if(batchSimulation)
+           {
+             endT = ros::Time::now();
+             simlength = endT - startT;
+             if(simlength.toSec() > 2000)
+             {
+               ROS_INFO_STREAM("Declaring target lost.");
+               ros::shutdown();
+             }
+           }
       }
 
       if(targetFound)
@@ -651,15 +656,9 @@ public:
         }
 
         double lsum = 0.0, esum = 0.0;
+
         for(int i=0; i < Evar.size(); i++)
-        {
-          Efactor[i] *= um->wayln[i];
-          LEfactor[i] *= um->wayln[i];
-          lsum += LEfactor[i];
-          esum += Efactor[i];
-        }
-        for(int i=0; i < Evar.size(); i++)
-           aff += sqrt(Efactor[i]+LEfactor[i]);
+           aff += sqrt(Efactor[i]*LEfactor[i]);
 
         vector<double> fusion(um->elist.size(), 0.0);
         for(int i=0; i < Evar.size(); i++)
@@ -674,7 +673,7 @@ public:
             int enumber = (int)pf->pp[i][0];
 
             if(ppe[enumber] > 0)
-              pf->w[i] = fusion[enumber]/(ppe[enumber]*um->wayln[enumber]);
+              pf->w[i] *= fusion[enumber]/LEfactor[enumber];
             else
               pf->w[i] = 0.0;
             wsum += pf->w[i];
@@ -941,6 +940,7 @@ public:
 
     waypoint_pub.publish(wp_msg);
 
+	totalIter++;
 
 
     //RVIZ visualization
@@ -1173,7 +1173,11 @@ public:
       ROS_DEBUG_STREAM("Time to dest " << timeToDest);
       vector<double> estimRad;
       // Lookahead horizon
-      int numTravEdges = horizonparam;
+      int numTravEdges;
+	  if(horizonparam > 0)
+	      numTravEdges = horizonparam;
+	  else
+	      numTravEdges = 1;
 
       for(int k=0; k < um->elist.size(); k++)
       {
@@ -1224,11 +1228,10 @@ public:
             // weight[k] = 1.0-sc + coll;
 
         /// Cost Function
-         sc = sc*um->wayln[k]/maplen;
-        //  weight[k] = fabs(1.0-sc) + coll;
-            weight[k] = fabs(sc - 0.5/(double)(horizonparam)) + coll;
-          // else
-            // weight[k] = coll;
+		  if(horizonparam > 0)
+		  	weight[k] = fabs(sc-0.5/((double)horizonparam)) + coll;
+	      else
+	        weight[k] = gsl_rng_uniform(RNG);
 
           // tie(idx, d) = findClosestEdge(Point2d(x,y));
           // if(k == idx)

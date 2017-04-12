@@ -199,7 +199,7 @@
 
       </group>
 
-      <!--group ns="uav5">
+      <group ns="uav5">
         <param name="targetdetect/camera_info_url" value="$(find service_utd)/calibration.yml" />
         <param name="tf_prefix" value="uav5" />
 
@@ -279,6 +279,6 @@
         <param name="controller/twist/linear/xy/k_i" value="0.5" />
         <param name="controller/twist/linear/xy/k_p" value="2.0" />
 
-      </group-->
+      </group>
 
     </launch>
