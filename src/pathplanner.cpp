@@ -3,7 +3,7 @@
 // Juan Pablo Ramirez <pablo.ramirez@utdallas.edu>
 // The University of Texas at Dallas
 // Sensing, Robotics, Vision, Control and Estimation Lab
-// (SeRViCE) 2012-2015
+// (SeRViCE) 2012-2016
 
 #include <ros/ros.h>
 #include <std_msgs/Bool.h>
@@ -240,7 +240,6 @@ public:
     yp = 0;
     seqnum = 0;
 
-//    timer = nh_.createTimer(ros::Duration(0.2), &pathPlanner::computeWaypoint, this);
     timerpf = nh_.createTimer(ros::Duration(0.5), &pathPlanner::broadcastParticles, this);
     timer = nh_.createTimer(ros::Duration(0.2), &pathPlanner::publishWaypoint, this);
 
@@ -412,7 +411,6 @@ public:
       float y1 = y - yp/2.0;
       float y2 = y + yp/2.0;
 
-//      pf->update(*um, Point2d(x2,y2), Point2d(x1,y1), detected);
       pf->simpleUpdate(*um, Point2d(x2,y2), Point2d(x1,y1), detected);
 
       double wsum = 0.0;
@@ -446,8 +444,7 @@ public:
               stt = stt + ".txt";
               ofstream fs;
               fs.open(stt.c_str());
-              //fs << simlength.toSec() << endl;
-			  fs << 0.2*(double)totalIter << endl;
+			        fs << 0.2*(double)totalIter << endl;
               fs.close();
               ROS_INFO_STREAM("Acquisition time recorded as " << stt);
               ros::shutdown();
@@ -474,22 +471,9 @@ public:
       if(targetFound)
       {
           Point2d tgtpos(targetPosition.position.x, targetPosition.position.y);
-//          Vec3f tgtpos = pf->meanEstim(*um);
           pf->particleFilter::update(*um, Point2d(x,y)+tgtpos, 1);
       }
 
-      // Visualizing the pf
-
-//      Mat visimagesc = Mat::zeros(500, 500, CV_8UC3);
-//      um->drawMap(visimagesc);
-//      pf->drawParticles(*um, visimagesc);
-//      Point uv1 = um->xy2uv(visimagesc.rows, visimagesc.cols, Point2d(x2,y2));
-//      Point uv2 = um->xy2uv(visimagesc.rows, visimagesc.cols, Point2d(x1,y1));
-//      rectangle(visimagesc, uv1, uv2, CV_RGB(255, 0, 0), 3);
-//      uv1 = um->xy2uv(visimagesc.rows, visimagesc.cols, Point2d(wp_msg.x, wp_msg.y));
-//      circle(visimagesc, uv1, 10, CV_RGB(0,255,0));
-//      imshow("pdf", visimagesc);
-//      waitKey(3);
 
 
 
@@ -503,8 +487,6 @@ public:
         const geometry_msgs::PoseStampedConstPtr& msg = event.getMessage();
         int callerId = UAVid[detectedUAV];
 
-//        if(myId == callerId)
-//            return;
 
         ros::Time ctime = ros::Time::now();
         d = ctime - pestim[callerId];
@@ -526,11 +508,6 @@ public:
         else
           collflag[callerId] = false;
 
-        // if(distanceToUAV < 1.5)
-        // {
-        //   ROS_FATAL_STREAM("UAV " << myId << " has collided.");
-        //   ros::shutdown();
-        // }
 
         if(distanceToUAV > detectionRadius)
         {
@@ -555,17 +532,6 @@ public:
   void broadcastParticles(const ros::TimerEvent& te)
   {
       bool broadcast = false;
-
-//      for(int i=0; i < otherUAVst.size(); i++)
-//      {
-//          double distanceToUAV = 0;
-//          distanceToUAV += pow(otherUAVst[i][0]-x, 2.0);
-//          distanceToUAV += pow(otherUAVst[i][1]-y, 2.0);
-//          distanceToUAV += pow(otherUAVst[i][2]-z, 2.0);
-//          distanceToUAV = sqrt(distanceToUAV);
-//          if(distanceToUAV < detectionRadius)
-//              broadcast = true;
-//      }
 
       broadcast = isUAVinGraph || targetFound;
 
@@ -603,16 +569,6 @@ public:
 
       bool receiving = false;
 
-//      for(int i=0; i < otherUAVst.size(); i++)
-//      {
-//          double distanceToUAV = 0;
-//          distanceToUAV += pow(otherUAVst[i][0]-x, 2.0);
-//          distanceToUAV += pow(otherUAVst[i][1]-y, 2.0);
-//          distanceToUAV += pow(otherUAVst[i][2]-z, 2.0);
-//          distanceToUAV = sqrt(distanceToUAV);
-//          if(distanceToUAV < detectionRadius)
-//              broadcast = true;
-//      }
 
       ROS_DEBUG_STREAM("UAV " << myId << " checking if it receives " << detectedUAV << " with ID " << callerId);
 
@@ -762,18 +718,7 @@ public:
   bool lineSegmentCollision(Point2d pt, double radius, Point2d lineStart, Point2d lineEnd)
   {
       bool coll = false;
-      // Point2d vl, vc;
-      // vc = pt - lineStart;
-      // vl = lineEnd - lineStart;
-      // if( (vc.x*vl.y-vc.y*vl.x) <= radius*norm(vl) )
-      // {
-      //     if(norm(vc) < radius)
-      //         coll = true;
-      //     if(norm(vl-vc) < radius)
-      //         coll = true;
-      //     if(!coll && vc.dot(vl) >= 0.0 && vc.dot(vl) <= vl.dot(vl) )
-      //         coll = true;
-      // }
+
       Point2d vl, vc, ve;
       vc = pt - lineStart;
       vl = lineEnd - lineStart;
@@ -812,18 +757,6 @@ public:
     bool climb = false;
     Point2d pt;
 
-    // if(executeMode == true)
-    // {
-    //   if(flightPlan.empty())
-    //   {
-    //     executeMode = false;
-    //   }
-    // }
-    // else if(isUAVinGraph)
-    // {
-    //   planPath();
-    //   executeMode = true;
-    // }
 
     if(flightPlan.empty() && isUAVinGraph)
     {
@@ -863,11 +796,6 @@ public:
             cruiseAltitude = 0;
     }
 
-//      if(coll)
-//      {
-//          pt = Point2d(x,y);
-//          ROS_INFO_STREAM("Collision imminent, stopping.");
-//      }
 
     int idx;
     double d;
@@ -1021,7 +949,6 @@ public:
     {
       geometry_msgs::Point pt;
       if(pf->w[i] < meanw)
-      // if(weight[(int)pf->pp[i][0]] < 1000)
       {
         Point2d p = um->ep2coord((int)pf->pp[i][0], pf->pp[i][1]);
         pt.x = p.x;
@@ -1193,7 +1120,6 @@ public:
               if(isPinE)
               {
                   sc += pf->w[j];
-//                  sc += 1.0;
               }
           }
 
@@ -1209,12 +1135,8 @@ public:
               Point2d uavcoord = Point2d(otherUAVst[j][0], otherUAVst[j][1]);
 
               double radtemp = 2*timeToDest*norm(otherUAVvel[j]);
-              // if(radtemp < collisionRadius || norm(ownVel) < 1e-6)
                 radtemp = collisionRadius;
               estimRad.push_back(radtemp);
-              // if(norm(ownVel) < 1e-6)
-                  // estimRad[j] = collisionRadius;
-//              cout << "estimRad " << estimRad[j] << endl;
 
               if(lineSegmentCollision(uavcoord, estimRad[j], ls, le))
                  coll += 1000.0;
@@ -1223,19 +1145,12 @@ public:
 
           Point2d midpt = Point2d(x,y)-0.5*Point2d(ls.x+le.x,ls.y+le.y);
           double dweight = fabs(midpt.x*midpt.x + midpt.y*midpt.y);
-//          weight[k] = um->wayln[k]/(1.0+sc) + coll;
-          // if(sc < 1.0)
-            // weight[k] = 1.0-sc + coll;
 
-        /// Cost Function
-		  if(horizonparam > 0)
-		  	weight[k] = fabs(sc-0.5/((double)horizonparam)) + coll;
-	      else
-	        weight[k] = gsl_rng_uniform(RNG);
+          if(horizonparam > 0)
+            weight[k] = fabs(sc-Copt/((double)horizonparam)) + coll;
+          else
+            weight[k] = gsl_rng_uniform(RNG);
 
-          // tie(idx, d) = findClosestEdge(Point2d(x,y));
-          // if(k == idx)
-          //   weight[k] += 1000;
           wt.push_back(weight[k]);
 
           Edge[k] = E(um->elist[k].x, um->elist[k].y);
@@ -1244,7 +1159,6 @@ public:
 
       }
 
-//      Graph G(Edge, Edge + sizeof(Edge) / sizeof(E), weight, um->coord.size());
       Graph G(um->coord.size());
       for(int i=0; i < um->elist.size(); i++)
       {
@@ -1289,11 +1203,8 @@ public:
           }
       }
 
-//      for(tie(vi, vend) = vertices(G); vi!=vend; ++vi)
       for(int i=0; i < validNodes.size(); i++)
       {
-//          cout << "Distance to vertex " << index(*vi) << " is " << d[*vi] << endl;
-//          if(dist[*vi] < mindist && index(*vi) != s && norm(Point2d(x,y)-um->coord[index[*vi]]) > planningHoriz)
           vertex_descriptor vd = validNodes[i];
           if(dist[index[vd]] < mindist && index[vd] != s)
           {
@@ -1303,18 +1214,10 @@ public:
 
       }
 
-      // If there are no particles within 2 edges of the starting node, find the shortest path
-      // to the MLE
-      // if(fabs(mindist-(double)numTravEdges) < 1e-80)
-      // {
-      //     tie(idx, d) = findClosestNode(mlePos);
-      //     minidx = idx;
-      // }
 
       ROS_DEBUG_STREAM("Minimum distance is " << mindist << " to node " << minidx << " at " << um->coord[minidx]);
 
       int vidx = minidx;
-//      tie(vidx, d) = findClosestNode(mlePos);
       vector<int> idxpath;
       idxpath.push_back(vidx);
       while(vidx != s)
@@ -1331,7 +1234,6 @@ public:
       pt = um->coord[idxpath[idxpath.size()-2]];
 
       flightPlan = idxpath;
-      // flightPlan.pop_back();
 
       if(displayMap)
       {
@@ -1344,7 +1246,6 @@ public:
         float y1 = y - yp/2.0;
         float y2 = y + yp/2.0;
 
-        // Mat visimagesc = Mat::zeros(500, 500, CV_8UC3);
         Mat visimagesc(500, 500, CV_8UC3, Scalar(255,255,255));
         um->drawMap(visimagesc);
         pf->drawParticles(*um, visimagesc);
@@ -1354,8 +1255,6 @@ public:
         cv::putText(visimagesc, nh_.getNamespace().c_str(), uv2, FONT_HERSHEY_SIMPLEX, 0.5, CV_RGB(0,0,0));
         uv1 = um->xy2uv(visimagesc.rows, visimagesc.cols, Point2d(wp_msg.x, wp_msg.y));
         circle(visimagesc, uv1, 10, CV_RGB(0,255,0));
-
-        //      um->coord.push_back(Point2d(x,y));
 
         for (tie(ei, ei_end) = edges(G); ei != ei_end; ++ei)
         {
@@ -1381,8 +1280,6 @@ public:
           continue;
           pt = Point2d(otherUAVst[j][0], otherUAVst[j][1]);
           uv1 = um->xy2uv(visimagesc.rows, visimagesc.cols, pt);
-          // // int rad = estimRad[j]*visimagesc.rows/(um->ne.x - um->sw.x);
-          // // cv::circle(visimagesc, uv1, rad, CV_RGB(100,0,0), 2);
           rad = detectionRadius*visimagesc.rows/(um->ne.x - um->sw.x);
           cv::circle(visimagesc, uv1, rad, CV_RGB(100,100,100), 2);
           rad = collisionRadius*visimagesc.rows/(um->ne.x - um->sw.x);

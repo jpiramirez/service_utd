@@ -22,7 +22,6 @@ public:
     if(tfactor < 0.0)
       tfactor = 1.0;
     clockpub = nh_.advertise<rosgraph_msgs::Clock>("/clock", 2);
-//    point_sub = nh_.subscribe("ardrone/setpoint", 2, &clockserver::setpointCallback, this);
     ROS_INFO_STREAM("Clock server created");
 
     nh_.param("tickspersec", realfactor, 250.0);

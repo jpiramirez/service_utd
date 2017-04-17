@@ -3,7 +3,7 @@
 // Juan Pablo Ramirez <pablo.ramirez@utdallas.edu>
 // The University of Texas at Dallas
 // Sensing, Robotics, Vision, Control and Estimation Lab
-// (SeRViCE) 2012-2015
+// (SeRViCE) 2012-2016
 
 
 #include "colortarget.h"
@@ -25,7 +25,7 @@ void colortarget::computeStateWithColorBlob(Mat pov)
 	int i;
 	double f;
 	Rect ROIrect;
-	
+
 	f = calibMatrix.at<double>(0,0);
 
 	colorVec[0] = color.val[0];
@@ -80,7 +80,7 @@ void colortarget::computeStateWithColorBlob(Mat pov)
 		targetAcquired = false;
 		return;
 	}
-	
+
 	tgtLoc.x = position[0];
 	tgtLoc.y = position[1];
 	tgtRect = ROIrect;
@@ -100,7 +100,3 @@ void colortarget::computeStateWithColorBlob(Mat pov)
 	position[1] *= position[2];
 	targetAcquired = true;
 }
-
-
-
-

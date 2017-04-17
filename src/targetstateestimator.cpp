@@ -30,7 +30,6 @@ void targetStateEstimator::predictGrid()
         return;
     GaussianBlur(occgrid, occgrid, Size(7,7), this->stddev, this->stddev);
     float factor = sum(occgrid)[0];
-    //cout << "Factor: " << factor << endl;
     if(factor > 1e-100)
         occgrid = occgrid*(1.0/factor);
     else
@@ -59,8 +58,8 @@ void targetStateEstimator::updateGrid(Rect &area, bool measurement)
     }
     fov = mask(iarea);
     fov = Scalar(1.0);
-    
-    
+
+
     if(measurement)
     {
         mask = Scalar(beta);
@@ -207,4 +206,3 @@ void targetStateEstimator::MLE()
     std[1] = sqrt(std[1]);
 
 }
-

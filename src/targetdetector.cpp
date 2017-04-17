@@ -3,7 +3,7 @@
 // Juan Pablo Ramirez <pablo.ramirez@utdallas.edu>
 // The University of Texas at Dallas
 // Sensing, Robotics, Vision, Control and Estimation Lab
-// (SeRViCE) 2012-2015
+// (SeRViCE) 2012-2016
 
 #include <ros/ros.h>
 #include <image_transport/image_transport.h>
@@ -60,9 +60,9 @@ public:
 
     std::string calibfile;
     nh_.param<std::string>("targetdetect/camera_info_url", calibfile, "calibration.yml");
-	std::string colordef;
+	  std::string colordef;
     nh_.param<std::string>("targetdetect/color", colordef, "0 71 213");
-	std::stringstream ss(colordef);
+	  std::stringstream ss(colordef);
     ss >> color[0];
     ss >> color[1];
     ss >> color[2];
@@ -145,9 +145,6 @@ public:
 	Mat fimage;
     cv_ptr->image.convertTo(fimage, CV_8UC3);
     Mat grayscale(fimage.rows, fimage.cols, CV_8UC1);
-    //vt.computeStateWithColorBlob(fimage);
-    //cv::circle(cv_ptr->image, vt.tgtLoc, 3, CV_RGB(255,0,0));
-    //cv::rectangle(cv_ptr->image, vt.tgtRect, CV_RGB(0,255,0), 3);
 
     geometry_msgs::Pose tgtPose;
     std_msgs::Bool tfound;
@@ -166,10 +163,6 @@ public:
                 grayscale.at<uchar>(i,j) = 0;
         }
 
-    //Mat grayscale(fimage.rows, fimage.cols, CV_8UC1);
-    //cvtColor(fimage, grayscale, CV_RGB2GRAY);
-    //grayscale.convertTo(grayscale, CV_8UC1);
-    //grayscale.convertTo(cv_ptr->image, CV_8UC3);
     cvtColor(grayscale, cv_ptr->image, CV_GRAY2BGR);
 
     keypoints.clear();
@@ -187,7 +180,6 @@ public:
         cv::circle(cv_ptr->image, pt, 20, CV_RGB(0,255,0), -1);
     }
 
-    //drawKeypoints(grayscale, keypoints, cv_ptr->image, CV_RGB(255, 0, 0));
 
     bool targetFound = false;
     if(keypoints.size() > 0)
@@ -198,7 +190,6 @@ public:
     {
         // The target position is being given relative to the drone pose
 
-//        tgtPose.position.z = tgtSize*f/(2.0*keypoints[0].size);
         tgtPose.position.z = camerapose[2];
         tgtPose.position.x = -(pt.y - fimage.rows/2.0)/f;
         tgtPose.position.y = -(pt.x - fimage.cols/2.0)/f;

@@ -5,7 +5,7 @@
 // Juan Pablo Ramirez <pablo.ramirez@utdallas.edu>
 // The University of Texas at Dallas
 // Sensing, Robotics, Vision, Control and Estimation Lab
-// (SeRViCE) 2012-2015
+// (SeRViCE) 2012-2016
 
 #include <ros/ros.h>
 #include <std_msgs/Bool.h>

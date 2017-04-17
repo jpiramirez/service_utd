@@ -33,11 +33,6 @@ void inhParticleFilter::simpleUpdate(urbanmap um, Point2d ul, Point2d br, bool m
         wsum += w[i];
     }
 
-//    if(wsum < 0.001)
-//    {
-//        reset(um);
-//        return;
-//    }
 
     double Neff = 0.0;
     for(int i=0; i < N; i++)
